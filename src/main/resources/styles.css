@@ -1,0 +1,71 @@
+
+.button {
+    -fx-text-fill: black;
+}
+
+.chart-symbol{
+    -fx-opacity: 1;
+    -fx-background-color: darkred;
+    -fx-shape: null;
+    -fx-background-radius: 0;
+    -fx-padding: 1px;
+}
+
+
+.ellipse{
+	-fx-stroke: #272727;
+    -fx-fill: #272727;
+	-fx-opacity: 0.6;
+}
+
+.ellipse:hover{
+	-fx-stroke: darkred;
+    -fx-fill: darkred;
+	-fx-opacity: 0.6;
+}
+
+.ellipse:pressed{
+	-fx-stroke: blue;
+    -fx-fill: blue;
+	-fx-opacity: 1;
+}
+
+.candidate{
+	-fx-stroke: tomato;
+    -fx-fill: tomato;
+	-fx-opacity: 1;
+}
+
+.neighbour{
+	-fx-stroke: khaki;
+    -fx-fill: khaki;
+	-fx-opacity: 1;
+}
+
+.axis-label {
+  -fx-text-fill: black;
+  -fx-font-size: 1.1em;
+  
+}
+.axis {
+    -fx-tick-label-fill: black;
+    -fx-tick-length: 20.0;
+    -fx-minor-tick-length: 10.0;
+    -fx-tick-label-font-size: 1em;
+}
+.thick-chart .chart-series-line {    
+-fx-stroke-width: 8px;
+}
+.axis-tick-mark {
+    -fx-stroke: black;
+}
+.axis-minor-tick-mark {
+    -fx-stroke: black;
+} 
+.chart-plot-background {
+-fx-background-color: rgba(0, 0, 0, 0);
+}
+.label{
+  -fx-font-size: 1.2em;
+}
+
