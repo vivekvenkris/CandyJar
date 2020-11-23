@@ -44,11 +44,9 @@ public class Psrcat implements PsrcatConstants {
 
 				Pulsar pulsar = (Pulsar)f.getValue();
 				
-				System.err.println(pulsar);
 
 				Angle raPulsar = pulsar.getRa();
 				Angle decPulsar = pulsar.getDec();
-				System.err.println(raPulsar + " " + decPulsar + " " + raBoresight + " " + decBoresight);
 
 				
 				Angle distance = Utilities.getAngularDistance(raPulsar, decPulsar, raBoresight, decBoresight);
@@ -95,7 +93,7 @@ public class Psrcat implements PsrcatConstants {
 						
 						if(name.equals(PSRJ)) {
 							if(pulsar != null && pulsar.getRa() !=null && pulsar.getDec() !=null && !problematic) pulsarMap.put(value, pulsar);
-							else System.err.println("Skipping pulsar: " + pulsar.getName());
+							//else System.err.println("Skipping pulsar: " + pulsar.getName());
 							
 							pulsar = new Pulsar();
 							pulsar.setName(value);
