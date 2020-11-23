@@ -1,6 +1,7 @@
 package data_holders;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class Beam {
@@ -72,6 +73,9 @@ public class Beam {
 	
 	public void addNeighbour(Beam b) {
 		this.neighbourBeams.add(b);
+	}
+	public void addNeighbours(Collection<Beam> bs) {
+		this.neighbourBeams.addAll(bs);
 	}
 	
 	public boolean isNeighbour(Beam b) {
