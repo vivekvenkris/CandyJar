@@ -84,6 +84,9 @@ public class ApsuseMetaReader {
 				JsonValue value =(JsonValue) e.getValue();
 				if (name.contains("if")) continue;
 				Beam beam  = new Beam(name, value.toString().strip().replaceAll("\"", ""),ellipseConfig);
+				
+				if(beam.getBoresightName().equals("unset")) continue;
+				
 				metaFile.getBeams().put(name,beam);
 				
 			}
