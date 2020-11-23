@@ -32,12 +32,13 @@ public interface Constants {
 	String SELECTED_BEAM_MAP = "selected";
 	String SHORTLISTED_BEAM_MAP = "shortlisted";
 	String NEIGHBOUR_BEAM_MAP = "neighbour";
-	String CANDIDATE_BEAM_MAP = "neighbour";
+	String CANDIDATE_BEAM_MAP = "candidate";
+	String KNOWN_PULSAR_BEAM_MAP = "knownpsr";
 
-	String OVERVIEW_CSV = "overview.csv";
+	String CSV_FILE_NAME = "candidates.csv";
 	
 	public static final List<String> plotOrder = Arrays.asList(
-			new String[] { SHORTLISTED_BEAM_MAP, NEIGHBOUR_BEAM_MAP, SELECTED_BEAM_MAP, DEFAULT_BEAM_MAP});
+			new String[] { CANDIDATE_BEAM_MAP, SHORTLISTED_BEAM_MAP, NEIGHBOUR_BEAM_MAP, SELECTED_BEAM_MAP, DEFAULT_BEAM_MAP, KNOWN_PULSAR_BEAM_MAP});
 	
 	
 	String commonUTCFormat = "yyyy-MM-dd:kk:mm:ss";
@@ -50,6 +51,9 @@ public interface Constants {
 		NOISE,
 		UNCATEGORIZED
 	}
+	
+	Integer RESAMPLED_IMAGE_WIDTH=750;
+	Integer RESAMPLED_IMAGE_HEIGHT=750;
 
 
 }
