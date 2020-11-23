@@ -11,7 +11,7 @@ plugins {
     id 'java-library'
     id 'application'
   	id 'eclipse'
-  	id 'org.openjfx.javafxplugin' version '0.0.8'
+  	id 'org.openjfx.javafxplugin' version '0.0.9'
   	id 'org.beryx.jlink' version '2.12.0'
   	
 }
@@ -28,7 +28,7 @@ repositories {
 
 javafx {
     version = "13"
-    modules = [ 'javafx.controls', 'javafx.fxml' ]
+    modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.swing' ]
 }
 
 
@@ -53,11 +53,58 @@ jlink {
     }
 }
 
+configurations.all {
+    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+        if (details.requested.name == 'log4j') {
+            details.useTarget "org.slf4j:slf4j-api:2.0.0-alpha0"
+        }
+	}
+}
+version = '1.0'
+
+jar {
+
+	from {
+	        configurations.compile.collect {
+	            it.isDirectory() ? it : zipTree(it)
+	        }
+	        configurations.runtime.collect {
+	            it.isDirectory() ? it : zipTree(it)
+	        }
+	    }
+    manifest {
+	    attributes(
+	            'Implementation-Title': 'CandyJar',
+	            'Implementation-Version': version,
+	            'Built-By': System.getProperty('user.name'),
+	            'Built-Date': new Date(),
+	            'Built-JDK': System.getProperty('java.version'),
+	            'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+	            'Main-Class': 'GetGroupMeMessages'
+	    )        
+    }
+}
 
 dependencies {
 
 	implementation(group: 'javax.json', name: 'javax.json-api', version: '1.1')
 	implementation(group: 'org.glassfish', name: 'javax.json', version: '1.1')
+	implementation(group: 'de.gsi.chart', name: 'chartfx-chart', version: '11.1.5'){
+	                                                                 
+	exclude group: 'org.apache.xmlgraphics', module: 'batik-bridge'
+    exclude group: 'org.apache.xmlgraphics', module: 'batik-script' 
+    exclude group: 'org.apache.xmlgraphics', module: 'batik-ext'
+    exclude group: 'xml-apis', module: 'xml-apis'
+    exclude group: 'xerces', module: 'xercesImpl'
+    exclude module: 'xalan'
+    
+	}
+	implementation (group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.0-alpha0')
+	
+	implementation (group: 'org.slf4j', name: 'slf4j-api', version: '2.0.0-alpha0')
+
+	implementation(group: 'com.mortennobel', name: 'java-image-scaling', version: '0.8.6')
+	
 
 
 }
