@@ -70,6 +70,7 @@ public class MyScatterChart extends ScatterChart<Number, Number> {
 			if(list ==null || list.isEmpty()) continue;
 			
 			
+			
 			for(Series<Number, Number> series: list) {
 				
 				
@@ -86,11 +87,9 @@ public class MyScatterChart extends ScatterChart<Number, Number> {
 					
 					double radiusX = b.getEllipseConfig().getBeamX().getDecimalHourValue() * xScale;
 					double radiusY = b.getEllipseConfig().getBeamY().getDegreeValue() * yScale;
-					
-	
 
 					
-					Ellipse e = new Ellipse(x1,y1, radiusX, radiusY );
+					Ellipse e = new Ellipse(x1,y1, radiusY, radiusX );
 					
 					Rotate rotate = new Rotate();
 					rotate.setAngle(b.getEllipseConfig().getBeamAngle().getDegreeValue());
