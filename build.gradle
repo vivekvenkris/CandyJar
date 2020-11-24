@@ -60,7 +60,7 @@ configurations.all {
         }
 	}
 }
-version = '1.0'
+version = '1.0-alpha'
 
 jar {
 
@@ -71,6 +71,8 @@ jar {
 	        configurations.runtime.collect {
 	            it.isDirectory() ? it : zipTree(it)
 	        }
+	         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+	        
 	    }
     manifest {
 	    attributes(
@@ -80,9 +82,59 @@ jar {
 	            'Built-Date': new Date(),
 	            'Built-JDK': System.getProperty('java.version'),
 	            'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
-	            'Main-Class': 'GetGroupMeMessages'
+	            'Main-Class': 'application.CandyJar'
 	    )        
     }
+}
+
+task uberJar(type: Jar) {
+    archiveClassifier = 'uber'
+
+    from sourceSets.main.output
+
+    dependsOn configurations.runtimeClasspath
+    from {
+        configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }.collect { zipTree(it) }
+    }
+    
+    manifest {
+	    attributes(
+	            'Implementation-Title': 'CandyJar',
+	            'Implementation-Version': version,
+	            'Built-By': System.getProperty('user.name'),
+	            'Built-Date': new Date(),
+	            'Built-JDK': System.getProperty('java.version'),
+	            'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+	            'Main-Class': 'application.CandyJar'
+	    )        
+    }
+}
+
+
+
+task fatJar(type: Jar)  {
+
+	manifest {
+	    attributes(
+	            'Implementation-Title': 'CandyJar',
+	            'Implementation-Version': version,
+	            'Built-By': System.getProperty('user.name'),
+	            'Built-Date': new Date(),
+	            'Built-JDK': System.getProperty('java.version'),
+	            'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+	            'Main-Class': 'application.CandyJar'
+	    )        
+    }
+    baseName = project.name + '-all'
+	from {
+	        configurations.compile.collect {
+	            it.isDirectory() ? it : zipTree(it)
+	        }
+	        configurations.runtime.collect {
+	            it.isDirectory() ? it : zipTree(it)
+	        }
+	    }
+    with jar
 }
 
 dependencies {
