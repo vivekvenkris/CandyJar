@@ -83,6 +83,8 @@ public class MyScatterChart extends ScatterChart<Number, Number> {
 					
 					Beam b = (Beam) d.getExtraValue();
 					
+					if (b.getName().contains("ifbf"))continue;
+					
 
 					
 					double radiusX = b.getEllipseConfig().getBeamX().getDecimalHourValue() * xScale;
