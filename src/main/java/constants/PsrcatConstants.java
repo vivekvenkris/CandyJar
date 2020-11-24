@@ -1,5 +1,6 @@
 package constants;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -26,7 +27,7 @@ public interface PsrcatConstants {
 	Integer endOfName=8;
 	Integer endofValue = 34;
 	
-	List<String> psrcatDBs =  Arrays.asList(new String[] {"/Users/vkrishnan/trashcan/psrcat_tar/psrcat.db"});
+	List<String> psrcatDBs =  Arrays.asList(new String[] { System.getenv("PSRCAT_DIR") + File.separator + "psrcat.db"});
 	
 	Map<String, Pulsar> pulsarMap = new LinkedHashMap<String, Pulsar>();
 	
