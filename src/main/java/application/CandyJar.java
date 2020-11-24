@@ -4,6 +4,9 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,12 +14,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
+import org.apache.commons.io.FileUtils;
 import org.controlsfx.control.SegmentedButton;
 
 import com.mortennobel.imagescaling.ResampleFilters;
@@ -35,6 +40,7 @@ import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
+import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
@@ -45,7 +51,10 @@ import javafx.scene.Scene;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.chart.XYChart.Data;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -68,6 +77,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.Pair;
@@ -91,7 +101,7 @@ public class CandyJar extends Application implements Constants {
 	
 	final HBox imageViewHBox = new HBox(10);
 
-	File baseDir = new File("/Users/vkrishnan/trashcan/MLGPS/msgps_run_3_and_4_candidate_cut/");
+	File baseDir = null;
 	
 	final NumberAxis xAxis = new NumberAxis();
 	final NumberAxis yAxis = new NumberAxis();
@@ -128,7 +138,7 @@ public class CandyJar extends Application implements Constants {
 	final CheckBox uncategorizedCB = new CheckBox("Uncategorized");
 	
 	final Button filterCandidates = new Button("Filter candidates");
-	HBox candidateFilterHBox = new HBox(rfiCB, noiseCB, tier1CB, tier2CB, knownPulsarCB, uncategorizedCB, filterCandidates);
+	HBox candidateFilterHBox = new HBox(10, rfiCB, noiseCB, tier1CB, tier2CB, knownPulsarCB, uncategorizedCB, filterCandidates);
 	
 	final List<Image> images = new ArrayList<>();
 	final List<Candidate> candidates = new ArrayList<>();
@@ -143,17 +153,18 @@ public class CandyJar extends Application implements Constants {
 	
 	final XYChart.Series<Number,Number> tempSeries = new XYChart.Series<Number,Number>();
 	
-	final Button saveClassification = new Button();
+	final Button saveClassification = new Button("Save classification");
+	
+	final ComboBox<String> sortBox = new ComboBox<String>();
+	
+	Boolean goingForward = Boolean.valueOf(Boolean.TRUE);
 
 	
     @Override
     public void start(Stage stage) throws Exception {
     	
+    	utcBox.setVisible(false);
 
-  	
-    	
-    	
-		
 		candidateCategories.getButtons().addAll(rfi, noise, tier1, tier2, knownPulsar);
 		candidateCategories.getStyleClass().add(SegmentedButton.STYLE_CLASS_DARK);
 		uncategorizedCB.setSelected(true);
@@ -169,9 +180,15 @@ public class CandyJar extends Application implements Constants {
 		
 		message.setTextFill(Paint.valueOf("darkred"));
 
-    	final VBox actionsHBox = new VBox(new HBox(10,previous,counterLabel, next, gotoCandidate.getTextField(), gotoCandidate.getButton()), new HBox(new Label("Select Category:"), candidateCategories));
+    	final VBox actionsHBox = new VBox(10, new HBox(10,previous,counterLabel, next, gotoCandidate.getTextField(), gotoCandidate.getButton(), saveClassification), new HBox(10, new Label("Select Category:"), candidateCategories));
 		actionsHBox.setVisible(false);
-
+		
+		sortBox.setItems(FXCollections.observableArrayList(Arrays.asList(new String[] {"FOLD_SNR", "FFT_SNR", "PICS_TRAPUM", "PICS_PALFA"})));
+		
+	//	sortBox.setValue("FOLD_SNR");
+		sortBox.setVisible(false);
+		
+		sortBox.setPromptText("Sort by");
 
     	
     	/* initialise all chart stuff */
@@ -232,7 +249,7 @@ public class CandyJar extends Application implements Constants {
         
         
         
-		LabelWithTextAndButton rootDirLWT = new LabelWithTextAndButton("Results directory:", baseDir.getAbsolutePath(),"Get pointings");
+		LabelWithTextAndButton rootDirLWT = new LabelWithTextAndButton("Results directory:", "","Get pointings");
         DirectoryChooser directoryChooser = new DirectoryChooser();
         Button fileSelectButton = new Button("Select File");
         fileSelectButton.setOnAction(e -> {
@@ -254,7 +271,7 @@ public class CandyJar extends Application implements Constants {
 				chart.getData().clear();
 				utcs.clear();
 				imageCounter = 0;
-
+				utcBox.setVisible(true);
 				
 				try {
 					fullCandiatesList.addAll(CandidateFileReader.readCandidateFile(baseDir.getAbsolutePath() + File.separator + Constants.CSV_FILE_NAME));
@@ -296,6 +313,8 @@ public class CandyJar extends Application implements Constants {
 		    	chart.setVisible(true);
 		    	imageView.setVisible(false);
 				actionsHBox.setVisible(false);
+				sortBox.setVisible(true);
+
 
 				String utcString = utcBox.getValue();
 				if(utcString == null) return;
@@ -313,8 +332,8 @@ public class CandyJar extends Application implements Constants {
 					
 					List<Pulsar> pulsarsInBeam = psrcat.getPulsarsInBeam(metaFile.getBoresight().getRa(), metaFile.getBoresight().getDec(), new Angle(1.0, Angle.DEG, Angle.DEG));
 					pulsarPane.getTabs().clear();
-					candidateTab.setContent(new Label("Candidate information will be displayed here"));
-					candidateTab.setText("Candidate Info");
+					candidateTab.setClosable(false);
+					updateTab(candidateTab, null);
 					pulsarPane.getTabs().add(candidateTab);
 					populateTabs(pulsarPane, pulsarsInBeam);
 					
@@ -407,6 +426,19 @@ public class CandyJar extends Application implements Constants {
 			}
 		});
 		
+		sortBox.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+//				imageCounter = 0;
+//				if(images.size() > 0) {
+//					consolidate(imageCounter);
+//				}
+				filterCandidates.fire();
+				
+			}
+		});
+		
 
 		
 		previous.setOnAction(new EventHandler<ActionEvent>() {
@@ -418,6 +450,8 @@ public class CandyJar extends Application implements Constants {
 					imageCounter--;
 					consolidate(imageCounter);
 				}
+				
+				goingForward = false;
 
 			}
 		});
@@ -431,8 +465,12 @@ public class CandyJar extends Application implements Constants {
 					imageCounter++;
 					consolidate(imageCounter);
 				}
+				
+				goingForward = true;
 
 			}
+			
+
 			
 	
 		});
@@ -447,7 +485,7 @@ public class CandyJar extends Application implements Constants {
 				if( c < 1 || c > images.size()) {
 					message.setText("Invalid candidate number to go to.");
 					return;
-				}
+				} 
 				
 				
 				imageCounter = c-1;
@@ -462,7 +500,7 @@ public class CandyJar extends Application implements Constants {
 			@Override
 			public void handle(ActionEvent event) {
 				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.RFI);
-				
+				progress();
 			}
 		});
 		
@@ -471,7 +509,8 @@ public class CandyJar extends Application implements Constants {
 			@Override
 			public void handle(ActionEvent event) {
 				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.TIER1_CANDIDATE);
-				
+				progress();
+
 			}
 		});
 		
@@ -480,7 +519,8 @@ public class CandyJar extends Application implements Constants {
 			@Override
 			public void handle(ActionEvent event) {
 				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.TIER2_CANDIDATE);
-				
+				progress();
+
 			}
 		});
 		
@@ -489,6 +529,8 @@ public class CandyJar extends Application implements Constants {
 			@Override
 			public void handle(ActionEvent event) {
 				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.NOISE);
+				progress();
+
 			}
 		});
 		
@@ -497,17 +539,59 @@ public class CandyJar extends Application implements Constants {
 			@Override
 			public void handle(ActionEvent event) {
 				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.KNOWN_PULSAR);
+				progress();
+
 			}
 		});
 		
 		
-		
+		saveClassification.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				FileChooser saveFileChooser = new FileChooser();
+				FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("CSV files", "*.csv");
+				saveFileChooser.getExtensionFilters().add(extFilter);
+				saveFileChooser.setInitialDirectory(baseDir);
+				saveFileChooser.setInitialFileName(baseDir.getName()+"_" + userName);
+	            File saveFile = saveFileChooser.showSaveDialog(stage);
+	            
+	            Optional<ButtonType> result = null;
+	            
+	            if(saveFile.exists()) {
+
+		            Alert alert = new Alert(AlertType.CONFIRMATION);
+
+		            alert.setTitle("Overwriting existing file");
+		            alert.setHeaderText("The selected file already exists.");
+		            alert.setContentText("Do you want to overwrite it?");
+		            
+		            result = alert.showAndWait();
+	            }
+	            
+	            
+	            
+	            if ( !saveFile.exists() || (result != null && result.get() == ButtonType.OK )){
+	            	
+	            	System.err.println("Saving file to " + saveFile.getAbsolutePath() );
+	            	
+	            	writeToFile(saveFile);
+	            	
+	            	
+	            } else {
+	            	
+	            	message.setText("File save aborted");
+	            	
+	            }
+
+				
+			}
+		});
 
 
 		
     	
-    	Label utcLabel = new Label("Select UTC:");
-    	HBox utcSelectHBox = new HBox(10, utcLabel, utcBox);
+    	HBox utcSelectHBox = new HBox(10,  new Label("Select UTC:"), utcBox, sortBox);
     	
     	LabelWithTextAndButton userNameLWT = new LabelWithTextAndButton("User Name", userName, "save");
     	
@@ -802,45 +886,51 @@ public class CandyJar extends Application implements Constants {
 		
 	    final TableView<Pair<String, Object>> table = new TableView<>();
 	    
-	    Beam beam  =  metaFile.getBeams().get(candidate.getBeamName());
-	    List<Integer> neighbours = new ArrayList<Integer>();
-	    if (beam !=null) neighbours.addAll(beam.getNeighbourBeams().stream().map(f-> Integer.parseInt(f.getName().replaceAll("\\D+",""))).collect(Collectors.toList()));
-	    else message.setText("Cannot find beam: " + candidate.getBeamName());
+	    if(candidate !=null) {
 	    
-	    table.getItems().add( new Pair<String, Object>("Pointing ID:",candidate.getPointingID()));
-	    table.getItems().add( new Pair<String, Object>("Beam ID:",candidate.getBeamID()));
-	    table.getItems().add( new Pair<String, Object>("Beam Name:",candidate.getBeamName()));
-	    table.getItems().add( new Pair<String, Object>("Neighbour beams:",neighbours.toString()));
-
-	    table.getItems().add( new Pair<String, Object>("Boresight:",candidate.getSourceName()));
-	    table.getItems().add( new Pair<String, Object>("RA:",candidate.getRa().toHHMMSS()));
-	    table.getItems().add( new Pair<String, Object>("DEC:",candidate.getDec().toDDMMSS()));
-	    table.getItems().add( new Pair<String, Object>("GL:",candidate.getGl().getDegreeValue().toString()));
-	    table.getItems().add( new Pair<String, Object>("GB:",candidate.getGb().getDegreeValue().toString()));
-	    table.getItems().add( new Pair<String, Object>("PICS score (TRAPUM):",candidate.getPicsScoreTrapum().toString()));
-	    table.getItems().add( new Pair<String, Object>("PICS score (PALFA):",candidate.getPicsScorePALFA().toString()));
-	    table.getItems().add( new Pair<String, Object>("FFT SNR:",candidate.getFftSNR().toString()));
-	    table.getItems().add( new Pair<String, Object>("Fold SNR: ",candidate.getFoldSNR().toString()));
-	    
-	    table.getItems().add( new Pair<String, Object>("Start MJD:",candidate.getStartMJD().toString()));
-	    table.getItems().add( new Pair<String, Object>("Start UTC:",candidate.getStartUTC().toString()));
-	    table.getItems().add( new Pair<String, Object>("Input F0:",candidate.getUserF0().toString()));
-	    table.getItems().add( new Pair<String, Object>("Best F0:",candidate.getOptF0() + " +/- "  + candidate.getOptF0Err()));
-	    table.getItems().add( new Pair<String, Object>("Input F1:",candidate.getUserF1().toString()));
-	    table.getItems().add( new Pair<String, Object>("Best F1:",candidate.getOptF1()+ " +/- "  + candidate.getOptF1Err()));
-	    table.getItems().add( new Pair<String, Object>("Input Acc:",candidate.getUserAcc().toString()));
-	    table.getItems().add( new Pair<String, Object>("Best Acc:",candidate.getOptAcc()+ " +/- "  + candidate.getOptAccErr()));
-	    table.getItems().add( new Pair<String, Object>("Input DM:",candidate.getUserDM().toString()));
-	    table.getItems().add( new Pair<String, Object>("Best DM: ",candidate.getOptDM()+ " +/- "  + candidate.getOptDMErr()));
-
-	    table.getItems().add( new Pair<String, Object>("Epoch of F0:",candidate.getPeopoch().toString()));
-	    table.getItems().add( new Pair<String, Object>("Max DM (YMW16):",candidate.getMaxDMYMW16().toString()));
-	    table.getItems().add( new Pair<String, Object>("Max Distance (YMW16):",candidate.getDistYMW16().toString()));
-
-	    table.getItems().add( new Pair<String, Object>("PNG path:",candidate.getPngFilePath()));
-	    table.getItems().add( new Pair<String, Object>("Metafile path:",candidate.getMetaFilePath()));
-	    table.getItems().add( new Pair<String, Object>("Filterbank path:",candidate.getFilterbankPath()));
-	    table.getItems().add( new Pair<String, Object>("Tarball path:",candidate.getTarballPath()));
+		    Beam beam  =  metaFile.getBeams().get(candidate.getBeamName());
+		    List<Integer> neighbours = new ArrayList<Integer>();
+		    if (beam !=null) neighbours.addAll(beam.getNeighbourBeams().stream().map(f-> Integer.parseInt(f.getName().replaceAll("\\D+",""))).collect(Collectors.toList()));
+		    else message.setText("Cannot find beam: " + candidate.getBeamName());
+		    
+		    table.getItems().add( new Pair<String, Object>("Pointing ID:",candidate.getPointingID()));
+		    table.getItems().add( new Pair<String, Object>("Beam ID:",candidate.getBeamID()));
+		    table.getItems().add( new Pair<String, Object>("Beam Name:",candidate.getBeamName()));
+		    table.getItems().add( new Pair<String, Object>("Neighbour beams:",neighbours.toString()));
+	
+		    table.getItems().add( new Pair<String, Object>("Boresight:",candidate.getSourceName()));
+		    table.getItems().add( new Pair<String, Object>("RA:",candidate.getRa().toHHMMSS()));
+		    table.getItems().add( new Pair<String, Object>("DEC:",candidate.getDec().toDDMMSS()));
+		    table.getItems().add( new Pair<String, Object>("GL:",candidate.getGl().getDegreeValue().toString()));
+		    table.getItems().add( new Pair<String, Object>("GB:",candidate.getGb().getDegreeValue().toString()));
+		    table.getItems().add( new Pair<String, Object>("PICS score (TRAPUM):",candidate.getPicsScoreTrapum().toString()));
+		    table.getItems().add( new Pair<String, Object>("PICS score (PALFA):",candidate.getPicsScorePALFA().toString()));
+		    table.getItems().add( new Pair<String, Object>("FFT SNR:",candidate.getFftSNR().toString()));
+		    table.getItems().add( new Pair<String, Object>("Fold SNR: ",candidate.getFoldSNR().toString()));
+		    
+		    table.getItems().add( new Pair<String, Object>("Start MJD:",candidate.getStartMJD().toString()));
+		    table.getItems().add( new Pair<String, Object>("Start UTC:",candidate.getStartUTC().toString()));
+		    table.getItems().add( new Pair<String, Object>("Input F0:",candidate.getUserF0().toString()));
+		    table.getItems().add( new Pair<String, Object>("Best F0:",candidate.getOptF0() + " +/- "  + candidate.getOptF0Err()));
+		    table.getItems().add( new Pair<String, Object>("Input F1:",candidate.getUserF1().toString()));
+		    table.getItems().add( new Pair<String, Object>("Best F1:",candidate.getOptF1()+ " +/- "  + candidate.getOptF1Err()));
+		    table.getItems().add( new Pair<String, Object>("Input Acc:",candidate.getUserAcc().toString()));
+		    table.getItems().add( new Pair<String, Object>("Best Acc:",candidate.getOptAcc()+ " +/- "  + candidate.getOptAccErr()));
+		    table.getItems().add( new Pair<String, Object>("Input DM:",candidate.getUserDM().toString()));
+		    table.getItems().add( new Pair<String, Object>("Best DM: ",candidate.getOptDM()+ " +/- "  + candidate.getOptDMErr()));
+	
+		    table.getItems().add( new Pair<String, Object>("Epoch of F0:",candidate.getPeopoch().toString()));
+		    table.getItems().add( new Pair<String, Object>("Max DM (YMW16):",candidate.getMaxDMYMW16().toString()));
+		    table.getItems().add( new Pair<String, Object>("Max Distance (YMW16):",candidate.getDistYMW16().toString()));
+	
+		    table.getItems().add( new Pair<String, Object>("PNG path:",candidate.getPngFilePath()));
+		    table.getItems().add( new Pair<String, Object>("Metafile path:",candidate.getMetaFilePath()));
+		    table.getItems().add( new Pair<String, Object>("Filterbank path:",candidate.getFilterbankPath()));
+		    table.getItems().add( new Pair<String, Object>("Tarball path:",candidate.getTarballPath()));
+	    }
+	    else {
+	    	 table.getItems().add( new Pair<String, Object>( "Candidate information will be displayed here", "" ));
+	    }
 	    
 	    TableColumn<Pair<String, Object>, String> nameColumn = new TableColumn<>("Name");
 		TableColumn<Pair<String, Object>, Object> valueColumn = new TableColumn<>("Value");
@@ -862,6 +952,13 @@ public class CandyJar extends Application implements Constants {
 		 
 		
 		
+	}
+	
+	
+	public void progress() {
+		candidateCategories.requestLayout();
+		if(goingForward)next.fire();
+		else previous.fire();
 	}
 	
 	public void populateTabs(TabPane tabPane, List<Pulsar> pulsars) {
@@ -1055,6 +1152,43 @@ public class CandyJar extends Application implements Constants {
 		
 	}
 	
+	public void sortCandidates() {
+		
+		
+		
+		candidates.addAll(candidates.stream().sorted(Comparator.comparing(f -> {
+			
+			Candidate candidate = (Candidate)f;
+			
+			if(sortBox.getValue() != null) {
+				
+				switch (sortBox.getValue()) {
+					case "FOLD_SNR": 
+						return candidate.getFoldSNR();
+					case "FFT_SNR": 
+						return candidate.getFftSNR();
+					case "PICS_TRAPUM": 
+						return candidate.getPicsScoreTrapum();
+					case "PICS_PALFA": 
+						return candidate.getPicsScorePALFA();
+					default:
+						return candidate.getFoldSNR();
+				
+				}
+			}
+			else {
+				sortBox.setValue("FOLD_SNR");
+				return candidate.getFoldSNR();
+				
+			}
+			
+		}).reversed()).collect(Collectors.toList()));
+		
+	
+		
+		
+	}
+	
 	
 	public void addAllCandidates(LocalDateTime utc, List<CANDIDATE_TYPE> types) {
 		
@@ -1064,7 +1198,33 @@ public class CandyJar extends Application implements Constants {
 		candidates.addAll(fullCandiatesList
 				.stream()
 				.filter(f -> f.getStartUTC().equals(utc) && types.contains(f.getCandidateType()))
-				.sorted(Comparator.comparing(Candidate::getFoldSNR).reversed())
+				.sorted(Comparator.comparing(f -> {
+					
+					Candidate candidate = (Candidate)f;
+					
+					if(sortBox.getValue() != null) {
+						
+						switch (sortBox.getValue()) {
+							case "FOLD_SNR": 
+								return candidate.getFoldSNR();
+							case "FFT_SNR": 
+								return candidate.getFftSNR();
+							case "PICS_TRAPUM": 
+								return candidate.getPicsScoreTrapum();
+							case "PICS_PALFA": 
+								return candidate.getPicsScorePALFA();
+							default:
+								return candidate.getFoldSNR();
+						
+						}
+					}
+					else {
+						sortBox.setValue("FOLD_SNR");
+						return candidate.getFoldSNR();
+						
+					}
+					
+				}).reversed())
 				.collect(Collectors.toList())
 				);
 		
@@ -1099,11 +1259,19 @@ public class CandyJar extends Application implements Constants {
 	
 	
 	public void consolidate(Integer count) {
-	
+		
+		tier1.setSelected(false);
+		tier2.setSelected(false);
+		rfi.setSelected(false);
+		knownPulsar.setSelected(false);
+		noise.setSelected(false);
+		
+
 		imageView.setImage(images.get(count));
 		Candidate candidate = candidates.get(count);
 		imageView.setUserData(candidate);
 		updateTab(candidateTab, candidate);
+		//pulsarPane.getTabs().add(candidateTab);
 		
 		counterLabel.setText( (imageCounter+1) +"/"+images.size()); 
 
@@ -1126,8 +1294,51 @@ public class CandyJar extends Application implements Constants {
 		
  	
     	chart.getData().add(tempSeries);
+    	
+    	
+    	switch (candidate.getCandidateType()) {
+		case TIER1_CANDIDATE: 
+			tier1.setSelected(true);
+			break;
+		case TIER2_CANDIDATE: 
+			tier2.setSelected(true);
+			break;
+		case RFI: 
+			rfi.setSelected(true);
+			break;
+		case KNOWN_PULSAR:
+			knownPulsar.setSelected(true);
+			break;
+		case NOISE:
+			noise.setSelected(true);
+			break;
+			
+		}
+    	
+    	pulsarPane.requestLayout();
 
+	}
+	
+	public void writeToFile(File saveFile){
+		
+	   Path fileName = saveFile.toPath();
+	   
+	   List<String> list = new ArrayList<String>();
+	   list.add("utc,png,classification");
+	   for(Candidate candidate: fullCandiatesList) 
+		   list.add(candidate.getUtcString() + Constants.CSV_SEPARATOR + candidate.getPngFilePath() + Constants.CSV_SEPARATOR + candidate.getCandidateType());
 
+       try {
+    	   FileUtils.writeLines(saveFile, list);
+	} catch (IOException e) {
+		message.setText(e.getMessage());
+		e.printStackTrace();
+	}
+          
+          
+         
+		
+		
 	}
 	
     public static void main(String[] args) throws IOException {
