@@ -15,7 +15,7 @@
 .ellipse{
 	-fx-stroke: #272727;
     -fx-fill: #272727;
-	-fx-opacity: 0.6;
+	-fx-opacity: 0.2;
 }
 
 .ellipse:hover{
