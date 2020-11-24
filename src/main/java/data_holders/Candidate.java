@@ -45,6 +45,8 @@ public class Candidate {
 	private String tarballPath;
 
 	private CANDIDATE_TYPE candidateType;
+	
+	private String utcString;
 
 	
 	public Candidate(Integer pointingID, Integer beamID, String beamName, String sourceName, Angle ra, Angle dec,
@@ -132,7 +134,7 @@ public class Candidate {
 		
 		this.candidateType = CANDIDATE_TYPE.UNCATEGORIZED;
 		
-		
+		this.utcString = Utilities.getUTCString(startUTC, DateTimeFormatter.ISO_DATE_TIME);
 	}
 	
 	@Override
@@ -412,6 +414,14 @@ public class Candidate {
 
 	public void setCandidateType(CANDIDATE_TYPE candidateType) {
 		this.candidateType = candidateType;
+	}
+
+	public String getUtcString() {
+		return utcString;
+	}
+
+	public void setUtcString(String utcString) {
+		this.utcString = utcString;
 	}
 
 	
