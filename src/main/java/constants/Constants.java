@@ -36,6 +36,7 @@ public interface Constants {
 	String KNOWN_PULSAR_BEAM_MAP = "knownpsr";
 
 	String CSV_FILE_NAME = "candidates.csv";
+	String CSV_SEPARATOR = ",";
 	
 	public static final List<String> plotOrder = Arrays.asList(
 			new String[] { CANDIDATE_BEAM_MAP, SHORTLISTED_BEAM_MAP, NEIGHBOUR_BEAM_MAP, SELECTED_BEAM_MAP, DEFAULT_BEAM_MAP, KNOWN_PULSAR_BEAM_MAP});
