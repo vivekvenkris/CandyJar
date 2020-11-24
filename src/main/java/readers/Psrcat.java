@@ -1,6 +1,7 @@
 package readers;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
@@ -71,6 +72,11 @@ public class Psrcat implements PsrcatConstants {
 	public  void loadDBs() throws IOException{
 		
 		for(String psrcatDB: psrcatDBs) {
+			
+			if (! new File(psrcatDB).exists()) {
+				System.err.println(psrcatDB + "not found. skipping");
+				continue;
+			}
 			
 			BufferedReader br = null;
 			int count = 0;
