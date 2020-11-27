@@ -98,5 +98,15 @@ and to run the application, please do `./gradlew run`
 This should open the application on your primary screen. You can provide commandline arguments like the following `./gradlew run --args="your arguments"`
 You can check `./gradlew run --args="-h"` for a list of available arguments. 
 
+Once you run the program, you will find a text field where you can add a candidate directory. You can also use the directory selector button (with the three dots) to navigate and select the directory. Once done, click on `Get Pointings` to load all the UTCs. 
+
+At this point, if you already have the output of a partial classification, you can add it using "load classification". Otherwise, ignore that button, and start selecting the UTC of your choice. 
+
+Once you select the UTC, the corresponding beam map will be drawn below. Now you can filter and sort candidates if you need to and click `Go` to start viewing the candidates. You can use the buttons for navigation and classification or use the corresponding keys (given in paranthesis) on your keyboard. For smaller screens, you can also press the spacebar to open the current PNG file using your default PNG viewer in full resolution. 
+
+Once the classification is done, you can press the "Save classification" button to write out your classification to a CSV file. 
+
+
+
 
 
