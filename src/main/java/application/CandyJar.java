@@ -712,16 +712,7 @@ public class CandyJar extends Application implements Constants {
 		stage.setResizable(false);
 		stage.show();
 
-		stage.getScene().setOnMouseDragged(new EventHandler<Event>() {
 
-			@Override
-			public void handle(Event event) {
-				for (Screen screen : Screen.getScreens()) {
-					System.err.println(screen.getBounds() + " " + Screen.getPrimary().equals(screen));
-				}
-
-			}
-		});
 
 //		stage.xProperty().addListener((obs, oldVal, newVal) -> {
 //			System.out.println("X: " + newVal);
