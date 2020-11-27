@@ -1,11 +1,10 @@
 package data_holders;
 
-import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 
 import constants.Constants.CANDIDATE_TYPE;
+import javafx.scene.image.Image;
 import utilitites.Utilities;
 
 public class Candidate {
@@ -47,6 +46,8 @@ public class Candidate {
 	private CANDIDATE_TYPE candidateType;
 	
 	private String utcString;
+	
+	private Image image; 
 
 	
 	public Candidate(Integer pointingID, Integer beamID, String beamName, String sourceName, Angle ra, Angle dec,
@@ -135,6 +136,7 @@ public class Candidate {
 		this.candidateType = CANDIDATE_TYPE.UNCATEGORIZED;
 		
 		this.utcString = Utilities.getUTCString(startUTC, DateTimeFormatter.ISO_DATE_TIME);
+		
 	}
 	
 	@Override
@@ -422,6 +424,14 @@ public class Candidate {
 
 	public void setUtcString(String utcString) {
 		this.utcString = utcString;
+	}
+
+	public Image getImage() {
+		return image;
+	}
+
+	public void setImage(Image image) {
+		this.image = image;
 	}
 
 	
