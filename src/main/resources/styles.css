@@ -37,8 +37,8 @@
 }
 
 .neighbour{
-	-fx-stroke: khaki;
-    -fx-fill: khaki;
+	-fx-stroke: steelblue;
+    -fx-fill: steelblue;
 	-fx-opacity: 1;
 }
 
@@ -69,3 +69,9 @@
   -fx-font-size: 1.2em;
 }
 
+.button{
+	-fx-font-size:1.2em;
+}
+.text{
+	-fx-font-size:1.2em;
+}
