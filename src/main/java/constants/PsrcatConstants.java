@@ -27,7 +27,7 @@ public interface PsrcatConstants {
 	Integer endOfName=8;
 	Integer endofValue = 34;
 	
-	List<String> psrcatDBs =  Arrays.asList(new String[] { System.getenv("PSRCAT_DIR") + File.separator + "psrcat.db"});
+	List<String> psrcatDBs =  new ArrayList<String>();
 	
 	Map<String, Pulsar> pulsarMap = new LinkedHashMap<String, Pulsar>();
 	
