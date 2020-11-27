@@ -7,13 +7,14 @@ module candyjar {
     
     requires transitive org.glassfish.java.json;
 	requires transitive javafx.base;
-	requires transitive chartfx.chart;
-	requires transitive chartfx.dataset;
+	requires  chartfx.chart;
+	requires  chartfx.dataset;
 	requires transitive org.controlsfx.controls;
-	requires java.desktop;
-	requires java.image.scaling;
-	requires javafx.swing;
-	requires commons.io;
+	requires transitive java.desktop;
+	requires  java.image.scaling;
+	requires transitive javafx.swing;
+	requires  commons.io;
+	requires  commons.cli;
 	
     
     opens application to javafx.fxml;
