@@ -71,6 +71,8 @@ public class Psrcat implements PsrcatConstants {
 	
 	public  void loadDBs() throws IOException{
 		
+		pulsarMap.clear();
+				
 		for(String psrcatDB: psrcatDBs) {
 			
 			if (! new File(psrcatDB).exists()) {
