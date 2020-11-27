@@ -3,13 +3,6 @@ Candidate Viewer for TRAPUM and MPIFR pulsar surveys with the MeerKAT telescope
 
 For now, alpha and beta releases will not be given as `jar` files. Please build from source using `gradle`. 
 
-## Dependencies that need to be natively installed for building
-
-1. Java JDK 14 or above
-2. JavaFX 15
-3. gradle 6.3 or above 
-
-
 ## Installing JAVA
 
 ### Ubuntu / Debian
