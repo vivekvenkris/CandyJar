@@ -3,6 +3,8 @@ package constants;
 import java.util.Arrays;
 import java.util.List;
 
+import javafx.geometry.Insets;
+
 public interface Constants {
 	
 	 
@@ -53,8 +55,13 @@ public interface Constants {
 		UNCATEGORIZED
 	}
 	
-	Integer RESAMPLED_IMAGE_WIDTH=750;
-	Integer RESAMPLED_IMAGE_HEIGHT=750;
+	Integer DEFAULT_IMAGE_WIDTH=1000;
+	Integer DEFAULT_IMAGE_HEIGHT=1000;
+
+	Insets DEFAULT_INSETS = new Insets(5, 20, 5, 20);
+	
+	Integer MAX_GUESSING_HARMONICS=16;
+
 
 
 }
