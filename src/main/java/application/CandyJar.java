@@ -8,11 +8,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -118,6 +121,7 @@ public class CandyJar extends Application implements Constants {
 	final NumberAxis yAxis = new NumberAxis();
 	final MyScatterChart chart = new MyScatterChart(xAxis, yAxis);
 	final List<Candidate> fullCandiatesList = new ArrayList<Candidate>();
+	final Map<String, List<Candidate>> candidateMap = new HashMap<String, List<Candidate>>();
 	String userName = System.getProperty("user.name");
 	MetaFile metaFile = null;
 
@@ -327,6 +331,14 @@ public class CandyJar extends Application implements Constants {
 						String utc = utcs.toArray()[0].toString();
 						utcBox.setValue(utc);
 
+					}
+					
+					for(LocalDateTime utc: utcs) { 
+						String utcString = Utilities.getUTCString(utc, DateTimeFormatter.ISO_DATE_TIME);
+						List<Candidate> candidatesPerUtc = fullCandiatesList.stream().filter(f -> f.getStartUTC().equals(utc)).collect(Collectors.toList());
+						candidateMap.put(utcString, candidatesPerUtc);
+						checkSimilarity(candidatesPerUtc);
+						
 					}
 
 					message.setText(utcs.size() + " utcs found");
@@ -702,6 +714,10 @@ public class CandyJar extends Application implements Constants {
 //		BorderPane.setMargin(message, insets);
 
 		Scene scene = new Scene(root, currentScreen.getBounds().getWidth(), currentScreen.getBounds().getHeight());
+		
+		stage.setX(currentScreen.getBounds().getMinX());
+		stage.setY(currentScreen.getBounds().getMinY());
+		
 
 		scene.setOnKeyPressed(keyEventHandler);
 
@@ -933,6 +949,11 @@ public class CandyJar extends Application implements Constants {
 						.map(f -> Integer.parseInt(f.getName().replaceAll("\\D+", ""))).collect(Collectors.toList()));
 			else
 				message.setText("Cannot find beam: " + candidate.getBeamName());
+			
+//			table.getItems().add(new Pair<String, Object>("similar candidates:", candidate.getSimilarParamCandidates().stream()
+//					.map(f ->{
+//						return f.getBeamName() + " " + f.getPngFilePath();	
+//					}).collect(Collectors.toList()).toString()));
 
 			table.getItems().add(new Pair<String, Object>("Pointing ID:", candidate.getPointingID()));
 			table.getItems().add(new Pair<String, Object>("Beam ID:", candidate.getBeamID()));
@@ -975,6 +996,8 @@ public class CandyJar extends Application implements Constants {
 			table.getItems().add(new Pair<String, Object>("Metafile path:", candidate.getMetaFilePath()));
 			table.getItems().add(new Pair<String, Object>("Filterbank path:", candidate.getFilterbankPath()));
 			table.getItems().add(new Pair<String, Object>("Tarball path:", candidate.getTarballPath()));
+			
+			
 		} else {
 			table.getItems().add(new Pair<String, Object>("Candidate information will be displayed here", ""));
 		}
@@ -1479,6 +1502,27 @@ public class CandyJar extends Application implements Constants {
 		
 	}
 	
+	
+	public void checkSimilarity(List<Candidate> candidates) {
+		
+		for(Candidate c1: candidates) {
+			
+			for(Candidate c2: candidates) {
+				
+				
+				if (c1.isSimilarTo(c2)) { 
+					if(!c1.equals(c2)) c1.getSimilarParamCandidates().add(c2);
+				}
+				
+				
+			}
+			
+		}
+		
+	}
+	
+	
+	
 	static CommandLineParser parser = new DefaultParser();
 	static Options options = new Options();
 	static CommandLine commandLine;
@@ -1486,7 +1530,11 @@ public class CandyJar extends Application implements Constants {
 	
 	public static void main(String[] args) throws IOException {
 		
-		PsrcatConstants.psrcatDBs.add(System.getenv("PSRCAT_DIR") + File.separator + "psrcat.db");
+		if(System.getenv("PSRCAT_DIR") != null) {
+			PsrcatConstants.psrcatDBs.add(System.getenv("PSRCAT_DIR") + File.separator + "psrcat.db");
+			
+		}
+		
 		
 		Locale.setDefault(Locale.US);
 
