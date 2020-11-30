@@ -326,12 +326,6 @@ public class CandyJar extends Application implements Constants {
 					utcBox.getItems().clear();
 					utcBox.setItems(FXCollections.observableArrayList(utcs.stream()
 							.map(f -> Utilities.getUTCString(f, commonUTCFormat)).collect(Collectors.toList())));
-					if (utcs.size() == 1) {
-
-						String utc = utcs.toArray()[0].toString();
-						utcBox.setValue(utc);
-
-					}
 					
 					for(LocalDateTime utc: utcs) { 
 						String utcString = Utilities.getUTCString(utc, DateTimeFormatter.ISO_DATE_TIME);
@@ -371,6 +365,9 @@ public class CandyJar extends Application implements Constants {
 				if (utcString == null)
 					return;
 
+				
+				System.err.println("UTC:" + utcString);
+				
 				LocalDateTime utc = Utilities.getUTCLocalDateTime(utcString, Constants.commonUTCFormat);
 
 				/* stupid stub because you need atleast one candidate to get the meta file */
