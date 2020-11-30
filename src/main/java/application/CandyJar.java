@@ -636,7 +636,7 @@ public class CandyJar extends Application implements Constants {
 
 				Optional<ButtonType> result = null;
 				
-				if(!loadFile.exists()) {
+				if(loadFile == null || !loadFile.exists()) {
 					message.setText("File does not exist");
 				}
 				else {
