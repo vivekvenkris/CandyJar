@@ -2,6 +2,8 @@ package data_holders;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 import constants.Constants.CANDIDATE_TYPE;
 import javafx.scene.image.Image;
@@ -48,7 +50,13 @@ public class Candidate {
 	private String utcString;
 	
 	private Image image; 
+	
+	private List<Candidate> similarParamCandidates; 
 
+	
+	public Candidate(){
+		similarParamCandidates = new ArrayList<Candidate>();
+	}
 	
 	public Candidate(Integer pointingID, Integer beamID, String beamName, String sourceName, Angle ra, Angle dec,
 			Angle gl, Angle gb, Double startMJD, LocalDateTime startUTC, Double userF0, Double optF0, Double optF0Err,
@@ -91,6 +99,8 @@ public class Candidate {
 		this.filterbankPath = filterbankPath;
 		this.tarballPath = tarballPath;
 		this.candidateType = candidateType;
+		
+		similarParamCandidates = new ArrayList<Candidate>();
 	}
 
 	public Candidate(String line) {
@@ -136,6 +146,8 @@ public class Candidate {
 		this.candidateType = CANDIDATE_TYPE.UNCATEGORIZED;
 		
 		this.utcString = Utilities.getUTCString(startUTC, DateTimeFormatter.ISO_DATE_TIME);
+		
+		similarParamCandidates = new ArrayList<Candidate>();
 		
 	}
 	
@@ -434,7 +446,24 @@ public class Candidate {
 		this.image = image;
 	}
 
-	
+	public List<Candidate> getSimilarParamCandidates() {
+		return similarParamCandidates;
+	}
 
+	public void setSimilarParamCandidates(List<Candidate> similarParamCandidates) {
+		this.similarParamCandidates = similarParamCandidates;
+	}
+
+	
+	public boolean isSimilarTo(Candidate c2) {
+		
+		if (Math.abs(this.getOptDM() - c2.getOptDM()) /this.getOptDMErr() < 1 &&
+				Math.abs(this.getOptF0() - c2.getOptF0()) / this.getOptF0Err() < 1 &&
+					Math.abs(this.getOptAcc() - c2.getOptAcc())/this.getOptAccErr() < 1) return true;
+		else return false;
+				
+		
+	}
+	
 
 }
