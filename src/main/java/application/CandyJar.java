@@ -1527,6 +1527,8 @@ public class CandyJar extends Application implements Constants {
 	
 	public static void main(String[] args) throws IOException {
 		
+		System.err.println("*************************Candy Jar V1.0-alpha*******************************");
+		
 		if(System.getenv("PSRCAT_DIR") != null) {
 			PsrcatConstants.psrcatDBs.add(System.getenv("PSRCAT_DIR") + File.separator + "psrcat.db");
 			
@@ -1568,7 +1570,14 @@ public class CandyJar extends Application implements Constants {
 			if(hasOption(selectScreen)) {
 				Integer value = Integer.parseInt(getValue(selectScreen));
 				
-				currentScreen = Screen.getScreens().get(value);
+				if(value < 0 || value > Screen.getScreens().size()) {
+					
+					System.err.println("Enter valid screen number.");
+					System.exit(0);
+					
+				}
+				
+				currentScreen = Screen.getScreens().get(value-1);
 				
 				
 			}
