@@ -56,8 +56,16 @@ jlink {
 configurations.all {
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
         if (details.requested.name == 'log4j') {
-            details.useTarget "org.slf4j:slf4j-api:2.0.0-alpha0"
+            details.useTarget "org.slf4j:slf4j-api:1.7.3"
         }
+	}
+	resolutionStrategy {
+	
+	force("org.slf4j:slf4j-api:1.7.3")
+	force("org.slf4j:slf4j-simple:1.7.3")
+	
+	
+	
 	}
 }
 version = '1.0-alpha'
@@ -151,14 +159,29 @@ dependencies {
     exclude module: 'xalan'
     
 	}
-	implementation (group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.0-alpha0')
 	
-	implementation (group: 'org.slf4j', name: 'slf4j-api', version: '2.0.0-alpha0')
-
-	implementation (group: 'com.mortennobel', name: 'java-image-scaling', version: '0.8.6')
-	
+	implementation (group: 'com.mortennobel', name: 'java-image-scaling', version: '0.8.6')	
 	implementation (group: 'commons-cli', name: 'commons-cli', version: '1.4')
+	
+	
 	
 
 
 }
+application {
+    applicationDefaultJvmArgs =  [
+            "--add-opens=javafx.base/com.sun.javafx.runtime=org.controlsfx.controls",
+            "--add-opens=javafx.base/com.sun.javafx.collections=org.controlsfx.controls",
+            "--add-opens=javafx.graphics/com.sun.javafx.css=org.controlsfx.controls",
+            "--add-opens=javafx.graphics/com.sun.javafx.scene=org.controlsfx.controls",
+            "--add-opens=javafx.graphics/com.sun.javafx.scene.traversal=org.controlsfx.controls",
+            "--add-opens=javafx.graphics/javafx.scene=org.controlsfx.controls",
+            "--add-opens=javafx.controls/com.sun.javafx.scene.control=org.controlsfx.controls",
+            "--add-opens=javafx.controls/com.sun.javafx.scene.control.behavior=org.controlsfx.controls",
+            "--add-opens=javafx.controls/javafx.scene.control.skin=org.controlsfx.controls",
+            "--add-opens=javafx.controls/com.sun.javafx.scene.control.inputmap=org.controlsfx.controls"
+            
+            
+    ]
+}
+	
