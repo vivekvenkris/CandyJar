@@ -4,9 +4,11 @@ import java.io.File;
 import java.io.FileFilter;
 import java.time.LocalDateTime;
 
+import data_holders.Angle;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.util.Callback;
+import javafx.util.StringConverter;
 
 public interface AppUtils {
 	
@@ -109,6 +111,35 @@ public interface AppUtils {
 	
 	
 	
+	StringConverter<Number> raStringConverter = new StringConverter<Number>() {
+
+		@Override
+		public String toString(Number object) {
+			Angle o = new Angle(object.doubleValue() * 15.0, Angle.DEG, Angle.DEG);
+			return o.toHHMMSS();
+		}
+
+		@Override
+		public Number fromString(String string) {
+			Angle o = new Angle(string, Angle.HHMMSS);
+			return o.getDecimalHourValue();
+		}
+	};
 	
+	StringConverter<Number> decStringConverter = new StringConverter<Number>() {
+
+		@Override
+		public String toString(Number object) {
+			Angle o = new Angle(object.doubleValue(), Angle.DEG, Angle.DEG);
+			return o.toDDMMSS();
+		}
+
+		@Override
+		public Number fromString(String string) {
+			Angle o = new Angle(string, Angle.DDMMSS);
+			return o.getDegreeValue();
+		}
+	};
+
 	
 }
