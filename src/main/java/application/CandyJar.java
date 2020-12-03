@@ -3,10 +3,7 @@ package application;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -34,7 +31,6 @@ import org.apache.commons.io.FileUtils;
 import org.controlsfx.control.CheckComboBox;
 import org.controlsfx.control.SegmentedButton;
 
-import com.mortennobel.imagescaling.ResampleFilters;
 import com.mortennobel.imagescaling.ResampleOp;
 
 import constants.Constants;
@@ -53,7 +49,6 @@ import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
-import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
@@ -72,7 +67,6 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableCell;
@@ -98,10 +92,10 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.Pair;
-import javafx.util.StringConverter;
 import readers.ApsuseMetaReader;
 import readers.CandidateFileReader;
 import readers.Psrcat;
+import utilitites.AppUtils;
 import utilitites.Utilities;
 
 public class CandyJar extends Application implements Constants {
@@ -110,73 +104,86 @@ public class CandyJar extends Application implements Constants {
 
 	Psrcat psrcat = new Psrcat();
 
-	BorderPane root = new BorderPane();
-
-	final Label message = new Label("All ok. Select a directory");
-	final HBox imageViewHBox = new HBox(10);
-
+	/* main pane*/
+	BorderPane mainBorderPane = new BorderPane();
+	
+	/*Top Left: Load directory and CSV */
 	File baseDir = null;
-
-	final NumberAxis xAxis = new NumberAxis();
-	final NumberAxis yAxis = new NumberAxis();
-	final MyScatterChart chart = new MyScatterChart(xAxis, yAxis);
-	final List<Candidate> fullCandiatesList = new ArrayList<Candidate>();
-	final Map<String, List<Candidate>> candidateMap = new HashMap<String, List<Candidate>>();
-	String userName = System.getProperty("user.name");
-	MetaFile metaFile = null;
-
-	Integer imageCounter = 0;
-
+	TextAndButton rootDirTB = new TextAndButton(null,"Results directory","Get pointings", 10);
+	Button fileSelectButton = new Button("...");
+	final Button loadClassification = new Button("Load classification");
+	
+	
+	/* Top left: Filter and sort candidates */
+	final ComboBox<String> utcBox = new ComboBox<String>();
+	final ComboBox<String> sortBox = new ComboBox<String>(FXCollections.observableArrayList(Arrays.asList(new String[] { "FOLD_SNR", "FFT_SNR", "PICS_TRAPUM", "PICS_PALFA", "DM", "F0" })));
+	final CheckComboBox<CANDIDATE_TYPE> filterTypes = new CheckComboBox<CANDIDATE_TYPE>(FXCollections.observableArrayList(Arrays.asList(Constants.CANDIDATE_TYPE.values())));
+	final List<CANDIDATE_TYPE> filteredTypes = new ArrayList<CANDIDATE_TYPE>();
+	final Button filterCandidates = new Button("Go");
+	
+	
+	final HBox candidateFilterHBox = new HBox(10, filterTypes, sortBox, filterCandidates);
+	final VBox controlBox = new VBox(10, new HBox(10, rootDirTB.getTextField(),fileSelectButton,rootDirTB.getButton(), loadClassification),	new HBox(10, utcBox, candidateFilterHBox));
+	
+	
+	/* Left Middle: Beam Map and tabbed pane */
+	final NumberAxis beamMapXAxis = new NumberAxis();
+	final NumberAxis beamMapYAxis = new NumberAxis();
+	final MyScatterChart beamMapChart = new MyScatterChart(beamMapXAxis, beamMapYAxis);
 	double initXLowerBound = 0, initXUpperBound = 0, initYLowerBound = 0, initYUpperBound = 0;
 
+
+	final TabPane pulsarPane = new TabPane();
+	final Tab candidateTab = new Tab();
+	final Tab diagnosticTab = new Tab();
+
+	
+	/* Bottom left: message label, controls  and filters*/
 	final Button previous = new Button("Previous (a)");
 	final Button next = new Button("Next (d)");
+	final LabelWithTextAndButton gotoCandidate = new LabelWithTextAndButton("Go to", "", "Go");
+	final Label counterLabel = new Label();
+	
 	final ToggleButton rfi = new ToggleButton("RFI (y)");
 	final ToggleButton noise = new ToggleButton("Noise (u)");
 	final ToggleButton tier1 = new ToggleButton("Tier1 (i)");
 	final ToggleButton tier2 = new ToggleButton("Tier2 (o)");
 	final ToggleButton knownPulsar = new ToggleButton("Known pulsar (p)");
-
-	final SegmentedButton candidateCategories = new SegmentedButton();
-	final ImageView imageView = new ImageView();
-
-	final ComboBox<String> utcBox = new ComboBox<String>();
-
-	final CheckBox rfiCB = new CheckBox("RFI");
-	final CheckBox noiseCB = new CheckBox("Noise");
-	final CheckBox tier1CB = new CheckBox("Tier1 candidates");
-	final CheckBox tier2CB = new CheckBox("Tier2 candidates");
-	final CheckBox knownPulsarCB = new CheckBox("Known Pulsars");
-	final CheckBox uncategorizedCB = new CheckBox("Uncategorized");
+	final SegmentedButton candidateCategories = new SegmentedButton(FXCollections.observableArrayList(Arrays.asList(new ToggleButton[] {rfi, noise, tier1, tier2, knownPulsar})));
+	final Label message = new Label("All ok. Select a directory");
 	
-	final CheckComboBox<CANDIDATE_TYPE> filterTypes = new CheckComboBox<CANDIDATE_TYPE>(FXCollections.observableArrayList(Arrays.asList(Constants.CANDIDATE_TYPE.values())));
-	final List<CANDIDATE_TYPE> filteredTypes = new ArrayList<CANDIDATE_TYPE>();
-	final Button filterCandidates = new Button("Go");
+	final Button saveClassification = new Button("Save classification");
+	
+	
+	final VBox actionsBox = new VBox(10, new HBox(10, previous, counterLabel, next, gotoCandidate.getTextField(), gotoCandidate.getButton(), saveClassification),
+			new HBox(10, new Label("Select Category:"), candidateCategories));
+	
+	/*Right: imageView */
+	final ImageView imageView = new ImageView();
+	final HBox imageViewHBox = new HBox(10);
 
 
-	// final List<Image> images = new ArrayList<>();
+	/* variables for data manipulation */
+	
+	MetaFile metaFile = null;
+	final List<Candidate> fullCandiatesList = new ArrayList<Candidate>();
+	final Map<String, List<Candidate>> candidateMap = new HashMap<String, List<Candidate>>();
 	final List<Candidate> candidates = new ArrayList<>();
 	final Set<LocalDateTime> utcs = new TreeSet<LocalDateTime>();
 
+	Integer imageCounter = 0;
+
+
+
+	// final List<Image> images = new ArrayList<>();
+
+
 	final Button resetCandidateCategory = new Button("Reset (R)");
-	final LabelWithTextAndButton gotoCandidate = new LabelWithTextAndButton("Go to", "", "Go");
-	final Label counterLabel = new Label();
-	final TabPane pulsarPane = new TabPane();
-	final Tab candidateTab = new Tab();
-	final Tab diagnosticTab = new Tab();
 
-	final XYChart.Series<Number, Number> tempSeries = new XYChart.Series<Number, Number>();
+	final XYChart.Series<Number, Number> selectedCandidateSeries = new XYChart.Series<Number, Number>();
 
-	final Button saveClassification = new Button("Save classification");
-	final Button loadClassification = new Button("Load classification");
+	String userName = System.getProperty("user.name");
 
-	final ComboBox<String> sortBox = new ComboBox<String>();
-	final VBox controlBox = new VBox(10);
-	final VBox actionsBox = new VBox(10);
-	
-	HBox candidateFilterHBox = new HBox(10, filterTypes, sortBox,
-			filterCandidates);
-	
 	Integer pngHeight = Constants.DEFAULT_IMAGE_HEIGHT;
 	Integer pngWidth = Constants.DEFAULT_IMAGE_WIDTH;
 	
@@ -184,17 +191,9 @@ public class CandyJar extends Application implements Constants {
 	Boolean goingForward = Boolean.valueOf(Boolean.TRUE);
 	
 	Boolean candidatesVisible=false;
-
-	@Override
-	public void start(Stage stage) throws Exception {
-		
-		//currentScreen = Screen.getScreens().get(1);
-		
-		System.err.println(currentScreen);
-		
-		configureLayout();
-		
-        filterTypes.setTitle("FILTER_TYPE");
+	
+	public void initialise() {
+		filterTypes.setTitle("FILTER_TYPE");
         utcBox.setPromptText("SELECT_UTC");
 		sortBox.setPromptText("SORT_BY");
 		
@@ -202,11 +201,29 @@ public class CandyJar extends Application implements Constants {
 		utcBox.setTooltip(new Tooltip("Select UTC to view candidates"));
 		sortBox.setTooltip(new Tooltip("Select value to sort by"));
 		
-		loadClassification.setVisible(false);
 		
-		//filterTypes.getCheckModel().check(filterTypes.getCheckModel().getItemIndex(CANDIDATE_TYPE.UNCATEGORIZED));
+		beamMapChart.setCursor(Cursor.CROSSHAIR);
+		beamMapChart.setAlternativeRowFillVisible(true);
+		beamMapChart.setAnimated(false);
+		beamMapChart.setLegendVisible(false);
+		beamMapChart.getData().clear();
+		beamMapChart.setLegendVisible(false);
+		beamMapChart.setAnimated(false);
+		beamMapChart.setVerticalZeroLineVisible(false);
+		
+		
+		beamMapXAxis.setAutoRanging(false);
+		beamMapYAxis.setAutoRanging(false);
 
+		beamMapXAxis.setForceZeroInRange(false);
+		beamMapYAxis.setForceZeroInRange(false);
 
+		beamMapXAxis.setAnimated(false);
+		beamMapYAxis.setAnimated(false);
+
+		beamMapXAxis.setTickLabelFormatter(AppUtils.raStringConverter);
+
+		beamMapYAxis.setTickLabelFormatter(AppUtils.decStringConverter);
 		
 		filterTypes.getCheckModel().getCheckedItems().addListener(new ListChangeListener<CANDIDATE_TYPE>() {
 	         public void onChanged(ListChangeListener.Change<? extends CANDIDATE_TYPE> c) {
@@ -216,85 +233,38 @@ public class CandyJar extends Application implements Constants {
 	         }
 	     });
 		
-		utcBox.setVisible(false);
-
-		candidateCategories.getButtons().addAll(rfi, noise, tier1, tier2, knownPulsar);
+		//candidateCategories.getButtons().addAll(rfi, noise, tier1, tier2, knownPulsar);
 		candidateCategories.getStyleClass().add(SegmentedButton.STYLE_CLASS_DARK);
-		uncategorizedCB.setSelected(true);
-
+		
+		loadClassification.setVisible(false);
+		utcBox.setVisible(false);
+		beamMapChart.setVisible(false);
 		candidateFilterHBox.setVisible(false);
-
+		sortBox.setVisible(false);
+		actionsBox.setVisible(false);
+		
 		gotoCandidate.getTextField().setPromptText("Go to Candidate");
 
 
 		message.setTextFill(Paint.valueOf("darkred"));
 
-		actionsBox.getChildren().addAll(new HBox(10, previous, counterLabel, next, gotoCandidate.getTextField(),
-				gotoCandidate.getButton(), saveClassification),
-				new HBox(10, new Label("Select Category:"), candidateCategories));
-		actionsBox.setVisible(false);
 
-		sortBox.setItems(FXCollections.observableArrayList(
-				Arrays.asList(new String[] { "FOLD_SNR", "FFT_SNR", "PICS_TRAPUM", "PICS_PALFA" })));
+	}
+	
 
-		sortBox.setVisible(false);
-
-
-		/* initialise all chart stuff */
-
-		chart.setCursor(Cursor.CROSSHAIR);
-		chart.setAlternativeRowFillVisible(true);
-		chart.setAnimated(false);
-		chart.setLegendVisible(false);
-		chart.getData().clear();
-		chart.setLegendVisible(false);
-		chart.setAnimated(false);
-		chart.setVerticalZeroLineVisible(false);
-		chart.setVisible(false);
-
-		xAxis.setAutoRanging(false);
-		yAxis.setAutoRanging(false);
-
-		xAxis.setForceZeroInRange(false);
-		yAxis.setForceZeroInRange(false);
-
-		xAxis.setAnimated(false);
-		yAxis.setAnimated(false);
-
-		xAxis.setTickLabelFormatter(new StringConverter<Number>() {
-
-			@Override
-			public String toString(Number object) {
-				Angle o = new Angle(object.doubleValue() * 15.0, Angle.DEG, Angle.DEG);
-				return o.toHHMMSS();
-			}
-
-			@Override
-			public Number fromString(String string) {
-				Angle o = new Angle(string, Angle.HHMMSS);
-				return o.getDecimalHourValue();
-			}
-		});
-
-		yAxis.setTickLabelFormatter(new StringConverter<Number>() {
-
-			@Override
-			public String toString(Number object) {
-				Angle o = new Angle(object.doubleValue(), Angle.DEG, Angle.DEG);
-				return o.toDDMMSS();
-			}
-
-			@Override
-			public Number fromString(String string) {
-				Angle o = new Angle(string, Angle.DDMMSS);
-				return o.getDegreeValue();
-			}
-		});
-
-		TextAndButton rootDirTB = new TextAndButton(null,"Results directory","Get pointings", 10);
+	@Override
+	public void start(Stage stage) throws Exception {
 		
+
+		configureLayout();
+		initialise();
+		
+        
+		//filterTypes.getCheckModel().check(filterTypes.getCheckModel().getItemIndex(CANDIDATE_TYPE.UNCATEGORIZED));
+
+
+
 		DirectoryChooser directoryChooser = new DirectoryChooser();
-		Button fileSelectButton = new Button("...");
 		fileSelectButton.setOnAction(e -> {
 			File selectedDirectory = directoryChooser.showDialog(stage);
 			rootDirTB.getTextField().setText(selectedDirectory.getAbsolutePath());
@@ -312,7 +282,7 @@ public class CandyJar extends Application implements Constants {
 
 				System.err.println("Loading new root directory" + rootDirTB.getTextField().getText());
 				baseDir = new File(rootDirTB.getTextField().getText());
-				chart.getData().clear();
+				beamMapChart.getData().clear();
 				utcs.clear();
 				imageCounter = 0;
 				utcBox.setVisible(true);
@@ -355,7 +325,7 @@ public class CandyJar extends Application implements Constants {
 				imageCounter = 0;
 
 				candidateFilterHBox.setVisible(true);
-				chart.setVisible(true);
+				beamMapChart.setVisible(true);
 				imageView.setVisible(false);
 				actionsBox.setVisible(false);
 				sortBox.setVisible(true);
@@ -405,16 +375,16 @@ public class CandyJar extends Application implements Constants {
 					initYLowerBound = yLowerBound;
 					initYUpperBound = yUpperBound;
 
-					xAxis.setLowerBound(xLowerBound);
-					xAxis.setUpperBound(xUpperBound);
-					xAxis.setTickUnit(0.01);
+					beamMapXAxis.setLowerBound(xLowerBound);
+					beamMapXAxis.setUpperBound(xUpperBound);
+					beamMapXAxis.setTickUnit(0.01);
 
-					yAxis.setLowerBound(yLowerBound);
-					yAxis.setUpperBound(yUpperBound);
-					yAxis.setTickUnit(-0.01);
+					beamMapYAxis.setLowerBound(yLowerBound);
+					beamMapYAxis.setUpperBound(yUpperBound);
+					beamMapYAxis.setTickUnit(-0.01);
 
-					xAxis.setLabel("RA (hours)");
-					yAxis.setLabel("DEC (degrees)");
+					beamMapXAxis.setLabel("RA (hms)");
+					beamMapYAxis.setLabel("DEC (dms)");
 
 					addDefaultMap(metaFile, pulsarsInBeam);
 
@@ -644,11 +614,6 @@ public class CandyJar extends Application implements Constants {
 			}
 		});
 
-
-		HBox utcSelectHBox = new HBox(10, utcBox);
-		
-		
-
 		TextAndButton userNameTB = new TextAndButton(userName, "User Name", "save", 10);
 
 		userNameTB.getButton().setOnAction(new EventHandler<ActionEvent>() {
@@ -660,57 +625,14 @@ public class CandyJar extends Application implements Constants {
 			}
 		});
 
-		controlBox.getChildren().addAll(new HBox(10, rootDirTB.getTextField(),fileSelectButton,rootDirTB.getButton(), loadClassification),
-				new HBox(10, utcSelectHBox, candidateFilterHBox));
 
-	
-		
-		
-		
-		
-
-//		BorderPane leftPane = new BorderPane();
-//
-//		VBox leftTop = new VBox(10, controlBox);
-//		leftTop.setPrefSize(750, 80);
-//		leftTop.setAlignment(Pos.CENTER);
-//		leftPane.setTop(leftTop);
-//
-//		VBox leftBottom = new VBox(10, message, actionsHBox);
-//		leftBottom.setPrefSize(750, 20);
-//		leftPane.setBottom(leftBottom);
-//
-//		VBox centerLeft = new VBox(10, chart, pulsarPane);
-//		centerLeft.setPrefSize(600, 800);
-//
-//		chart.setPrefWidth(600);
-//		chart.setPrefHeight(600);
-//		leftPane.setCenter(centerLeft);
-//
-//		root.setLeft(leftPane);
-//
-//		imageViewHBox.getChildren().add(imageView);
-//		imageViewHBox.setPrefSize(Constants.RESAMPLED_IMAGE_WIDTH, Constants.RESAMPLED_IMAGE_HEIGHT);
-//
-//		VBox rightPane = new VBox(10, imageViewHBox);
-//		rightPane.setPrefSize(Constants.RESAMPLED_IMAGE_WIDTH, Constants.RESAMPLED_IMAGE_HEIGHT);
-//
-//		root.setRight(rightPane);
-
-		root.setOnMouseClicked(f -> {
-			root.requestFocus();
+		mainBorderPane.setOnMouseClicked(f -> {
+			mainBorderPane.requestFocus();
 		});
 		
-		Platform.runLater(() -> root.requestFocus());
+		Platform.runLater(() -> mainBorderPane.requestFocus());
 
-//		Insets insets = new Insets(5, 20, 5, 20);
-//
-//		BorderPane.setMargin(leftTop, insets);
-//		// BorderPane.setMargin(chart, insets );
-//		BorderPane.setMargin(imageViewHBox, insets);
-//		BorderPane.setMargin(message, insets);
-
-		Scene scene = new Scene(root, currentScreen.getBounds().getWidth(), currentScreen.getBounds().getHeight());
+		Scene scene = new Scene(mainBorderPane, currentScreen.getBounds().getWidth(), currentScreen.getBounds().getHeight());
 		
 		stage.setX(currentScreen.getBounds().getMinX());
 		stage.setY(currentScreen.getBounds().getMinY());
@@ -725,8 +647,6 @@ public class CandyJar extends Application implements Constants {
 		stage.setResizable(false);
 		stage.show();
 
-
-
 //		stage.xProperty().addListener((obs, oldVal, newVal) -> {
 //			System.out.println("X: " + newVal);
 //
@@ -740,13 +660,13 @@ public class CandyJar extends Application implements Constants {
 			rootDirTB.getButton().fire();
 		}
 
-		chart.setOnMouseClicked(mouseHandler);
-		chart.setOnMouseDragged(mouseHandler);
-		chart.setOnMouseEntered(mouseHandler);
-		chart.setOnMouseExited(mouseHandler);
-		chart.setOnMouseMoved(mouseHandler);
-		chart.setOnMousePressed(mouseHandler);
-		chart.setOnMouseReleased(mouseHandler);
+		beamMapChart.setOnMouseClicked(mouseHandler);
+		beamMapChart.setOnMouseDragged(mouseHandler);
+		beamMapChart.setOnMouseEntered(mouseHandler);
+		beamMapChart.setOnMouseExited(mouseHandler);
+		beamMapChart.setOnMouseMoved(mouseHandler);
+		beamMapChart.setOnMousePressed(mouseHandler);
+		beamMapChart.setOnMouseReleased(mouseHandler);
 
 		rect = new Rectangle();
 		rect.setFill(Color.web("LIGHTBLUE", 0.1));
@@ -755,13 +675,13 @@ public class CandyJar extends Application implements Constants {
 
 		rect.widthProperty().bind(rectX.subtract(rectinitX));
 		rect.heightProperty().bind(rectY.subtract(rectinitY));
-		root.getChildren().add(rect);
+		mainBorderPane.getChildren().add(rect);
 
 	}
 
 	public void addDefaultMap(MetaFile metaFile, List<Pulsar> pulsars) {
 		
-		chart.getData().clear();
+		beamMapChart.getData().clear();
 
 		XYChart.Series<Number, Number> beamPositions = new XYChart.Series<Number, Number>();
 		beamPositions.setName(Constants.DEFAULT_BEAM_MAP);
@@ -785,7 +705,7 @@ public class CandyJar extends Application implements Constants {
 		}
 		pulsarPositions.setName(Constants.KNOWN_PULSAR_BEAM_MAP);
 
-		chart.getData().add(beamPositions);
+		beamMapChart.getData().add(beamPositions);
 		// chart.getData().add(pulsarPositions);
 
 	}
@@ -803,17 +723,17 @@ public class CandyJar extends Application implements Constants {
 		@Override
 		public void handle(MouseEvent mouseEvent) {
 
-			Bounds chartSceneBounds = chart.localToScene(chart.getBoundsInLocal());
+			Bounds chartSceneBounds = beamMapChart.localToScene(beamMapChart.getBoundsInLocal());
 
 			if (mouseEvent.getButton() == MouseButton.SECONDARY) {
+				
+				((NumberAxis) beamMapChart.getXAxis()).setLowerBound(initXLowerBound);
+				((NumberAxis) beamMapChart.getXAxis()).setUpperBound(initXUpperBound);
+				((NumberAxis) beamMapChart.getXAxis()).setTickUnit((initXUpperBound - initXLowerBound) / 10.0);
 
-				((NumberAxis) chart.getXAxis()).setLowerBound(initXLowerBound);
-				((NumberAxis) chart.getXAxis()).setUpperBound(initXUpperBound);
-				((NumberAxis) chart.getXAxis()).setTickUnit((initXUpperBound - initXLowerBound) / 10.0);
-
-				((NumberAxis) chart.getYAxis()).setLowerBound(initYLowerBound);
-				((NumberAxis) chart.getYAxis()).setUpperBound(initYUpperBound);
-				((NumberAxis) chart.getYAxis()).setTickUnit((initXUpperBound - initXLowerBound) / 10.0);
+				((NumberAxis) beamMapChart.getYAxis()).setLowerBound(initYLowerBound);
+				((NumberAxis) beamMapChart.getYAxis()).setUpperBound(initYUpperBound);
+				((NumberAxis) beamMapChart.getYAxis()).setTickUnit((initXUpperBound - initXLowerBound) / 10.0);
 
 			}
 
@@ -838,6 +758,7 @@ public class CandyJar extends Application implements Constants {
 
 					rectX.set(newX);
 					rectY.set(newY);
+					
 				} else if (mouseEvent.getEventType() == MouseEvent.MOUSE_RELEASED) {
 
 					System.err.println("released:" + mouseEvent.getX() + " " + mouseEvent.getY());
@@ -847,12 +768,12 @@ public class CandyJar extends Application implements Constants {
 						double X = mouseEvent.getX() + chartSceneBounds.getMinX();
 						double Y = mouseEvent.getY() + chartSceneBounds.getMinY();
 
-						NumberAxis yAxis = (NumberAxis) chart.getYAxis();
+						NumberAxis yAxis = (NumberAxis) beamMapChart.getYAxis();
 						double Tgap = yAxis.getHeight() / (yAxis.getUpperBound() - yAxis.getLowerBound());
 						double axisShift = getSceneShiftY(yAxis);
 						double ptY = yAxis.getUpperBound() - ((Y - axisShift) / Tgap);
 
-						NumberAxis xAxis = (NumberAxis) chart.getXAxis();
+						NumberAxis xAxis = (NumberAxis) beamMapChart.getXAxis();
 
 						Tgap = xAxis.getWidth() / (xAxis.getUpperBound() - xAxis.getLowerBound());
 						axisShift = getSceneShiftX(xAxis);
@@ -865,7 +786,7 @@ public class CandyJar extends Application implements Constants {
 						double xScaleFactor, yScaleFactor;
 						double xaxisShift, yaxisShift;
 						// Zoom in Y-axis by changing bound range.
-						NumberAxis yAxis = (NumberAxis) chart.getYAxis();
+						NumberAxis yAxis = (NumberAxis) beamMapChart.getYAxis();
 						Tgap = yAxis.getHeight() / (yAxis.getUpperBound() - yAxis.getLowerBound());
 						axisShift = getSceneShiftY(yAxis);
 						yaxisShift = axisShift;
@@ -884,7 +805,7 @@ public class CandyJar extends Application implements Constants {
 						yAxis.setTickUnit((newUpperBound - newLowerBound) / 10.0);
 						// Zoom in X-axis by removing first and last data values.
 
-						NumberAxis xAxis = (NumberAxis) chart.getXAxis();
+						NumberAxis xAxis = (NumberAxis) beamMapChart.getXAxis();
 
 						Tgap = xAxis.getWidth() / (xAxis.getUpperBound() - xAxis.getLowerBound());
 						axisShift = getSceneShiftX(xAxis);
@@ -1237,6 +1158,10 @@ public class CandyJar extends Application implements Constants {
 					return candidate.getPicsScoreTrapum();
 				case "PICS_PALFA":
 					return candidate.getPicsScorePALFA();
+				case "DM":
+					return candidate.getOptDM();
+				case "F0":
+					return candidate.getOptF0();
 				default:
 					return candidate.getFoldSNR();
 
@@ -1272,6 +1197,10 @@ public class CandyJar extends Application implements Constants {
 							return candidate.getPicsScoreTrapum();
 						case "PICS_PALFA":
 							return candidate.getPicsScorePALFA();
+						case "DM":
+							return candidate.getOptDM();
+						case "F0":
+							return candidate.getOptF0();
 						default:
 							return candidate.getFoldSNR();
 
@@ -1333,8 +1262,8 @@ public class CandyJar extends Application implements Constants {
 
 		message.setText("");
 
-		chart.getData().removeAll(tempSeries);
-		tempSeries.getData().clear();
+		beamMapChart.getData().removeAll(selectedCandidateSeries);
+		selectedCandidateSeries.getData().clear();
 
 		String beamName = candidates.get(imageCounter).getBeamName();
 		Beam b = metaFile.getBeams().entrySet().stream().filter(f -> {
@@ -1342,12 +1271,12 @@ public class CandyJar extends Application implements Constants {
 			return e.getValue().getName().endsWith(beamName);
 		}).collect(Collectors.toList()).get(0).getValue();
 
-		tempSeries.setName(Constants.CANDIDATE_BEAM_MAP);
+		selectedCandidateSeries.setName(Constants.CANDIDATE_BEAM_MAP);
 		Data<Number, Number> d = new Data<Number, Number>(b.getRa().getDecimalHourValue(), b.getDec().getDegreeValue());
 		d.setExtraValue(b);
-		tempSeries.getData().add(d);
+		selectedCandidateSeries.getData().add(d);
 
-		chart.getData().add(tempSeries);
+		beamMapChart.getData().add(selectedCandidateSeries);
 
 		switch (candidate.getCandidateType()) {
 		case TIER1_CANDIDATE:
@@ -1415,15 +1344,15 @@ public class CandyJar extends Application implements Constants {
 		
 		double leftCentreHeight = pngHeight - leftBottomHeight - leftTopHeight;
 		
-		chart.setMinHeight(0.5*leftCentreHeight);
+		beamMapChart.setMinHeight(0.5*leftCentreHeight);
 
-		VBox centerLeft = new VBox(10, chart, pulsarPane, actionsBox);
+		VBox centerLeft = new VBox(10, beamMapChart, pulsarPane, actionsBox);
 		centerLeft.setPrefSize(remainingWidth, leftCentreHeight);
 		VBox.setVgrow(centerLeft, Priority.ALWAYS);
 
 		leftPane.setCenter(centerLeft);
 
-		root.setLeft(leftPane);
+		mainBorderPane.setLeft(leftPane);
 
 		imageViewHBox.getChildren().add(imageView);
 		imageViewHBox.setPrefSize(pngWidth, pngHeight);
@@ -1431,7 +1360,7 @@ public class CandyJar extends Application implements Constants {
 		VBox rightPane = new VBox(10, imageViewHBox);
 		rightPane.setPrefSize(pngWidth, pngHeight);
 
-		root.setRight(rightPane);
+		mainBorderPane.setRight(rightPane);
 		
 		BorderPane.setMargin(leftTop, insets);
 		BorderPane.setMargin(centerLeft, insets );
@@ -1609,4 +1538,8 @@ public class CandyJar extends Application implements Constants {
 		HelpFormatter formater = new HelpFormatter();
 		formater.printHelp("CandyJar", options);
 	}
+	
+	
+	
+	
 }
