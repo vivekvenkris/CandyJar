@@ -4,10 +4,12 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +32,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.io.FileUtils;
 import org.controlsfx.control.CheckComboBox;
 import org.controlsfx.control.SegmentedButton;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.mortennobel.imagescaling.ResampleOp;
 
@@ -38,8 +42,11 @@ import constants.PsrcatConstants;
 import data_holders.Angle;
 import data_holders.Beam;
 import data_holders.Candidate;
+import data_holders.Candidate.CANDIDATE_PLOT_CATEGORY;
+import data_holders.Candidate.CANDIDATE_TYPE;
 import data_holders.MetaFile;
 import data_holders.Pulsar;
+import de.gsi.chart.Chart;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -90,6 +97,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import javafx.util.Callback;
 import javafx.util.Pair;
 import readers.ApsuseMetaReader;
@@ -100,7 +108,12 @@ import utilitites.Utilities;
 
 public class CandyJar extends Application implements Constants {
 
-	private static Screen currentScreen = Screen.getPrimary();
+	private static Screen primaryScreen = Screen.getPrimary();
+	private static Screen secondaryScreen = Screen.getPrimary();
+	
+	private static Integer numCharts = 2;
+	private static Integer minNumCharts = 0;
+	private static Integer maxNumCharts = 3;
 
 	Psrcat psrcat = new Psrcat();
 
@@ -108,7 +121,7 @@ public class CandyJar extends Application implements Constants {
 	BorderPane mainBorderPane = new BorderPane();
 	
 	/*Top Left: Load directory and CSV */
-	File baseDir = null;
+	File baseDir = new File("/Users/vkrishnan/trashcan/MLGPS/msgps_run_3_and_4_candidate_cut");
 	TextAndButton rootDirTB = new TextAndButton(null,"Results directory","Get pointings", 10);
 	Button fileSelectButton = new Button("...");
 	final Button loadClassification = new Button("Load classification");
@@ -116,8 +129,9 @@ public class CandyJar extends Application implements Constants {
 	
 	/* Top left: Filter and sort candidates */
 	final ComboBox<String> utcBox = new ComboBox<String>();
-	final ComboBox<String> sortBox = new ComboBox<String>(FXCollections.observableArrayList(Arrays.asList(new String[] { "FOLD_SNR", "FFT_SNR", "PICS_TRAPUM", "PICS_PALFA", "DM", "F0" })));
-	final CheckComboBox<CANDIDATE_TYPE> filterTypes = new CheckComboBox<CANDIDATE_TYPE>(FXCollections.observableArrayList(Arrays.asList(Constants.CANDIDATE_TYPE.values())));
+	//final ComboBox<String> sortBox = new ComboBox<String>(FXCollections.observableArrayList(Arrays.asList(new String[] { "FOLD_SNR", "FFT_SNR", "PICS_TRAPUM", "PICS_PALFA", "DM", "F0" })));
+	final ComboBox<String> sortBox = new ComboBox<String>(FXCollections.observableArrayList(Candidate.SORTABLE_PARAMETERS_MAP.keySet()));
+	final CheckComboBox<CANDIDATE_TYPE> filterTypes = new CheckComboBox<CANDIDATE_TYPE>(FXCollections.observableArrayList(Arrays.asList(CANDIDATE_TYPE.values())));
 	final List<CANDIDATE_TYPE> filteredTypes = new ArrayList<CANDIDATE_TYPE>();
 	final Button filterCandidates = new Button("Go");
 	
@@ -133,9 +147,9 @@ public class CandyJar extends Application implements Constants {
 	double initXLowerBound = 0, initXUpperBound = 0, initYLowerBound = 0, initYUpperBound = 0;
 
 
-	final TabPane pulsarPane = new TabPane();
-	final Tab candidateTab = new Tab();
-	final Tab diagnosticTab = new Tab();
+	final TabPane infoPane = new TabPane();
+	final Tab candidateTab = new Tab("Candidate Info");
+	final Tab diagnosticTab = new Tab("Diagnostics");
 
 	
 	/* Bottom left: message label, controls  and filters*/
@@ -170,6 +184,7 @@ public class CandyJar extends Application implements Constants {
 	final Map<String, List<Candidate>> candidateMap = new HashMap<String, List<Candidate>>();
 	final List<Candidate> candidates = new ArrayList<>();
 	final Set<LocalDateTime> utcs = new TreeSet<LocalDateTime>();
+	final List<Pulsar> pulsarsInBeam = new ArrayList<Pulsar>();
 
 	Integer imageCounter = 0;
 
@@ -191,6 +206,11 @@ public class CandyJar extends Application implements Constants {
 	Boolean goingForward = Boolean.valueOf(Boolean.TRUE);
 	
 	Boolean candidatesVisible=false;
+	
+	
+	/* second screen */
+	
+	ChartViewer chartViewer = null;
 	
 	public void initialise() {
 		filterTypes.setTitle("FILTER_TYPE");
@@ -248,7 +268,7 @@ public class CandyJar extends Application implements Constants {
 
 		message.setTextFill(Paint.valueOf("darkred"));
 
-
+		chartViewer = new ChartViewer(secondaryScreen, numCharts);
 	}
 	
 
@@ -260,13 +280,14 @@ public class CandyJar extends Application implements Constants {
 		initialise();
 		
         
-		//filterTypes.getCheckModel().check(filterTypes.getCheckModel().getItemIndex(CANDIDATE_TYPE.UNCATEGORIZED));
+		filterTypes.getCheckModel().check(filterTypes.getCheckModel().getItemIndex(CANDIDATE_TYPE.UNCAT));
 
 
 
 		DirectoryChooser directoryChooser = new DirectoryChooser();
 		fileSelectButton.setOnAction(e -> {
 			File selectedDirectory = directoryChooser.showDialog(stage);
+			if(selectedDirectory ==null) return;
 			rootDirTB.getTextField().setText(selectedDirectory.getAbsolutePath());
 		});
 
@@ -282,6 +303,10 @@ public class CandyJar extends Application implements Constants {
 
 				System.err.println("Loading new root directory" + rootDirTB.getTextField().getText());
 				baseDir = new File(rootDirTB.getTextField().getText());
+				
+				String csv = baseDir.getAbsolutePath() + File.separator + Constants.CSV_FILE_NAME;
+				
+				
 				beamMapChart.getData().clear();
 				utcs.clear();
 				imageCounter = 0;
@@ -289,8 +314,8 @@ public class CandyJar extends Application implements Constants {
 				loadClassification.setVisible(true);
 
 				try {
-					fullCandiatesList.addAll(CandidateFileReader
-							.readCandidateFile(baseDir.getAbsolutePath() + File.separator + Constants.CSV_FILE_NAME));
+					fullCandiatesList.addAll(CandidateFileReader.readCandidateFile(csv));
+					
 					utcs.addAll(fullCandiatesList.stream().map(f -> f.getStartUTC()).collect(Collectors.toSet()));
 
 					utcBox.getItems().clear();
@@ -307,9 +332,16 @@ public class CandyJar extends Application implements Constants {
 
 					message.setText(utcs.size() + " utcs found");
 
-				} catch (IOException e) {
+				} catch (NoSuchFileException e) {
 					message.setText(e.getMessage());
 					e.printStackTrace();
+					utcBox.setVisible(false);
+					loadClassification.setVisible(false);
+				}catch (IOException e) {
+					message.setText(e.getMessage());
+					e.printStackTrace();
+					utcBox.setVisible(false);
+					loadClassification.setVisible(false);
 				}
 
 			}
@@ -334,27 +366,28 @@ public class CandyJar extends Application implements Constants {
 				String utcString = utcBox.getValue();
 				if (utcString == null)
 					return;
-
 				
 				System.err.println("UTC:" + utcString);
 				
 				LocalDateTime utc = Utilities.getUTCLocalDateTime(utcString, Constants.commonUTCFormat);
 
 				/* stupid stub because you need atleast one candidate to get the meta file */
-				shortlistCandidates(utc, Arrays.asList(Constants.CANDIDATE_TYPE.values()));
+				shortlistCandidates(utc, Arrays.asList(CANDIDATE_TYPE.values()));
 
 				try {
 					metaFile = ApsuseMetaReader.parseFile(baseDir.getAbsolutePath() + File.separator
 							+ candidates.get(imageCounter).getMetaFilePath());
 					metaFile.findNeighbours();
-
-					List<Pulsar> pulsarsInBeam = psrcat.getPulsarsInBeam(metaFile.getBoresight().getRa(),
-							metaFile.getBoresight().getDec(), new Angle(1.0, Angle.DEG, Angle.DEG));
-					pulsarPane.getTabs().clear();
+					pulsarsInBeam.clear();
+					pulsarsInBeam.addAll(psrcat.getPulsarsInBeam(metaFile.getBoresight().getRa(),
+							metaFile.getBoresight().getDec(), new Angle(1.0, Angle.DEG, Angle.DEG)));
+					infoPane.getTabs().clear();
 					candidateTab.setClosable(false);
+					diagnosticTab.setClosable(false);
 					updateTab(candidateTab, null);
-					pulsarPane.getTabs().add(candidateTab);
-					populateTabs(pulsarPane, pulsarsInBeam);
+					populatePulsarTabs(infoPane);
+					infoPane.getTabs().add(0, candidateTab);
+					infoPane.getTabs().add(1, diagnosticTab);
 
 					double xLowerBound = metaFile.getMinRa().getDecimalHourValue();
 					double xUpperBound = metaFile.getMaxRa().getDecimalHourValue();
@@ -431,18 +464,7 @@ public class CandyJar extends Application implements Constants {
 			}
 		});
 
-		sortBox.setOnAction(new EventHandler<ActionEvent>() {
 
-			@Override
-			public void handle(ActionEvent event) {
-//				imageCounter = 0;
-//				if(images.size() > 0) {
-//					consolidate(imageCounter);
-//				}
-				//filterCandidates.fire();
-
-			}
-		});
 
 		previous.setOnAction(new EventHandler<ActionEvent>() {
 
@@ -511,7 +533,7 @@ public class CandyJar extends Application implements Constants {
 			@Override
 			public void handle(ActionEvent event) {
 				if(! candidatesVisible) return;
-				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.TIER1_CANDIDATE);
+				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.T1_CAND);
 				progress();
 
 			}
@@ -522,7 +544,7 @@ public class CandyJar extends Application implements Constants {
 			@Override
 			public void handle(ActionEvent event) {
 				if(! candidatesVisible) return;
-				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.TIER2_CANDIDATE);
+				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.T2_CAND);
 				progress();
 
 			}
@@ -544,7 +566,7 @@ public class CandyJar extends Application implements Constants {
 			@Override
 			public void handle(ActionEvent event) {
 				if(! candidatesVisible) return;
-				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.KNOWN_PULSAR);
+				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.KNOWN_PSR);
 				progress();
 
 			}
@@ -562,6 +584,11 @@ public class CandyJar extends Application implements Constants {
 				File saveFile = saveFileChooser.showSaveDialog(stage);
 
 				Optional<ButtonType> result = null;
+				
+				if(saveFile == null ) {
+					message.setText("Aborting saving classification.");
+					return;
+				}
 
 				if (saveFile.exists()) {
 
@@ -582,7 +609,7 @@ public class CandyJar extends Application implements Constants {
 
 				} else {
 
-					message.setText("File save aborted");
+					message.setText("Aborting saving classification.");
 
 				}
 
@@ -603,7 +630,11 @@ public class CandyJar extends Application implements Constants {
 
 				Optional<ButtonType> result = null;
 				
-				if(loadFile == null || !loadFile.exists()) {
+				if(loadFile == null) {
+					message.setText("Aborted loading existing classification.");
+				}
+				
+				else if(!loadFile.exists()) {
 					message.setText("File does not exist");
 				}
 				else {
@@ -632,11 +663,19 @@ public class CandyJar extends Application implements Constants {
 		
 		Platform.runLater(() -> mainBorderPane.requestFocus());
 
-		Scene scene = new Scene(mainBorderPane, currentScreen.getBounds().getWidth(), currentScreen.getBounds().getHeight());
+		Scene scene = new Scene(mainBorderPane, primaryScreen.getBounds().getWidth(), primaryScreen.getBounds().getHeight());
 		
-		stage.setX(currentScreen.getBounds().getMinX());
-		stage.setY(currentScreen.getBounds().getMinY());
+		stage.setX(primaryScreen.getBounds().getMinX());
+		stage.setY(primaryScreen.getBounds().getMinY());
 		
+		stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
+
+			@Override
+			public void handle(WindowEvent event) {
+				Platform.exit();
+				
+			}
+		});
 
 		scene.setOnKeyPressed(keyEventHandler);
 
@@ -710,149 +749,7 @@ public class CandyJar extends Application implements Constants {
 
 	}
 
-	/* Code for chart zooming */
-
-	Rectangle rect;
-	SimpleDoubleProperty rectinitX = new SimpleDoubleProperty();
-	SimpleDoubleProperty rectinitY = new SimpleDoubleProperty();
-	SimpleDoubleProperty rectX = new SimpleDoubleProperty();
-	SimpleDoubleProperty rectY = new SimpleDoubleProperty();
-
-	EventHandler<MouseEvent> mouseHandler = new EventHandler<MouseEvent>() {
-
-		@Override
-		public void handle(MouseEvent mouseEvent) {
-
-			Bounds chartSceneBounds = beamMapChart.localToScene(beamMapChart.getBoundsInLocal());
-
-			if (mouseEvent.getButton() == MouseButton.SECONDARY) {
-				
-				((NumberAxis) beamMapChart.getXAxis()).setLowerBound(initXLowerBound);
-				((NumberAxis) beamMapChart.getXAxis()).setUpperBound(initXUpperBound);
-				((NumberAxis) beamMapChart.getXAxis()).setTickUnit((initXUpperBound - initXLowerBound) / 10.0);
-
-				((NumberAxis) beamMapChart.getYAxis()).setLowerBound(initYLowerBound);
-				((NumberAxis) beamMapChart.getYAxis()).setUpperBound(initYUpperBound);
-				((NumberAxis) beamMapChart.getYAxis()).setTickUnit((initXUpperBound - initXLowerBound) / 10.0);
-
-			}
-
-			if (mouseEvent.getButton() == MouseButton.PRIMARY) {
-
-				if (mouseEvent.getEventType() == MouseEvent.MOUSE_PRESSED) {
-
-					rect.setX(mouseEvent.getX() + chartSceneBounds.getMinX());
-					rect.setY(mouseEvent.getY() + chartSceneBounds.getMinY());
-					rectinitX.set(mouseEvent.getX() + chartSceneBounds.getMinX());
-					rectinitY.set(mouseEvent.getY() + chartSceneBounds.getMinY());
-
-				}
-
-				else if (mouseEvent.getEventType() == MouseEvent.MOUSE_DRAGGED) {
-
-					double newX = mouseEvent.getX() + chartSceneBounds.getMinX();
-					double newY = mouseEvent.getY() + chartSceneBounds.getMinY();
-
-					newX = newX > chartSceneBounds.getMaxX() ? chartSceneBounds.getMaxX() : newX;
-					newY = newY > chartSceneBounds.getMaxY() ? chartSceneBounds.getMaxY() : newY;
-
-					rectX.set(newX);
-					rectY.set(newY);
-					
-				} else if (mouseEvent.getEventType() == MouseEvent.MOUSE_RELEASED) {
-
-					System.err.println("released:" + mouseEvent.getX() + " " + mouseEvent.getY());
-
-					if ((rectinitX.get() >= rectX.get()) && (rectinitY.get() >= rectY.get())) {
-						@SuppressWarnings("unchecked")
-						double X = mouseEvent.getX() + chartSceneBounds.getMinX();
-						double Y = mouseEvent.getY() + chartSceneBounds.getMinY();
-
-						NumberAxis yAxis = (NumberAxis) beamMapChart.getYAxis();
-						double Tgap = yAxis.getHeight() / (yAxis.getUpperBound() - yAxis.getLowerBound());
-						double axisShift = getSceneShiftY(yAxis);
-						double ptY = yAxis.getUpperBound() - ((Y - axisShift) / Tgap);
-
-						NumberAxis xAxis = (NumberAxis) beamMapChart.getXAxis();
-
-						Tgap = xAxis.getWidth() / (xAxis.getUpperBound() - xAxis.getLowerBound());
-						axisShift = getSceneShiftX(xAxis);
-						double ptX = ((X - axisShift) / Tgap) + xAxis.getLowerBound();
-
-					} else {
-
-						double Tgap = 0;
-						double newLowerBound, newUpperBound, axisShift;
-						double xScaleFactor, yScaleFactor;
-						double xaxisShift, yaxisShift;
-						// Zoom in Y-axis by changing bound range.
-						NumberAxis yAxis = (NumberAxis) beamMapChart.getYAxis();
-						Tgap = yAxis.getHeight() / (yAxis.getUpperBound() - yAxis.getLowerBound());
-						axisShift = getSceneShiftY(yAxis);
-						yaxisShift = axisShift;
-
-						newUpperBound = yAxis.getUpperBound() - ((rectinitY.get() - axisShift) / Tgap);
-						newLowerBound = yAxis.getUpperBound() - ((rectY.get() - axisShift) / Tgap);
-
-						if (newUpperBound > yAxis.getUpperBound())
-							newUpperBound = yAxis.getUpperBound();
-
-						yScaleFactor = (yAxis.getUpperBound() - yAxis.getLowerBound())
-								/ (newUpperBound - newLowerBound);
-						yAxis.setLowerBound(newLowerBound);
-						yAxis.setUpperBound(newUpperBound);
-
-						yAxis.setTickUnit((newUpperBound - newLowerBound) / 10.0);
-						// Zoom in X-axis by removing first and last data values.
-
-						NumberAxis xAxis = (NumberAxis) beamMapChart.getXAxis();
-
-						Tgap = xAxis.getWidth() / (xAxis.getUpperBound() - xAxis.getLowerBound());
-						axisShift = getSceneShiftX(xAxis);
-						xaxisShift = axisShift;
-
-						newLowerBound = ((rectinitX.get() - axisShift) / Tgap) + xAxis.getLowerBound();
-						newUpperBound = ((rectX.get() - axisShift) / Tgap) + xAxis.getLowerBound();
-
-						if (newUpperBound > xAxis.getUpperBound())
-							newUpperBound = xAxis.getUpperBound();
-
-						xScaleFactor = (xAxis.getUpperBound() - xAxis.getLowerBound())
-								/ (newUpperBound - newLowerBound);
-						xAxis.setLowerBound(newLowerBound);
-						xAxis.setUpperBound(newUpperBound);
-						xAxis.setTickUnit((newUpperBound - newLowerBound) / 10.0);
-
-					}
-
-					rectX.set(0);
-					rectY.set(0);
-
-				}
-
-			}
-		}
-
-	};
-
-	private static double getSceneShiftX(Node node) {
-		double shift = 0;
-		do {
-			shift += node.getLayoutX();
-			node = node.getParent();
-		} while (node != null);
-		return shift;
-	}
-
-	private static double getSceneShiftY(Node node) {
-		double shift = 0;
-		do {
-			shift += node.getLayoutY();
-			node = node.getParent();
-		} while (node != null);
-		return shift;
-	}
-
+	
 	public void updateTab(Tab tab, Candidate candidate) {
 		tab.setText("Candidate Info");
 
@@ -864,7 +761,7 @@ public class CandyJar extends Application implements Constants {
 			List<Integer> neighbours = new ArrayList<Integer>();
 			if (beam != null)
 				neighbours.addAll(beam.getNeighbourBeams().stream()
-						.map(f -> Integer.parseInt(f.getName().replaceAll("\\D+", ""))).collect(Collectors.toList()));
+						.map(f -> f.getIntegerBeamName()).collect(Collectors.toList()));
 			else
 				message.setText("Cannot find beam: " + candidate.getBeamName());
 			
@@ -951,18 +848,24 @@ public class CandyJar extends Application implements Constants {
 //			previous.fire();
 	}
 	
-	public void updateDiagnosticTab(TabPane tabPane,List<Pulsar> pulsars, Candidate candidate) {
-		
-		diagnosticTab.setText("Diagnostic");
+	public void updateDiagnosticTab(TabPane tabPane, Candidate candidate) {
 		final TableView<Pair<String, Object>> table = new TableView<>();
+		
 
-		for (Pulsar pulsar : pulsars) {
-			table.getItems().add(new Pair<String, Object>(pulsar.getName() , KnownPulsarGuesser.guessPulsar(candidate, pulsar)));
+		if(pulsarsInBeam != null && !pulsarsInBeam.isEmpty()) {
 			
+			for (Pulsar pulsar : pulsarsInBeam) {
+				table.getItems().add(new Pair<String, Object>(pulsar.getName() , KnownPulsarGuesser.guessPulsar(candidate, pulsar)));
+				
+			}
+			
+		}else {
+			table.getItems().add(new Pair<String, Object>("Diagnostic information will be displayed here", ""));
 		}
 		
-		TableColumn<Pair<String, Object>, String> nameColumn = new TableColumn<>("Name");
-		TableColumn<Pair<String, Object>, Object> valueColumn = new TableColumn<>("Value");
+		
+		TableColumn<Pair<String, Object>, String> nameColumn = new TableColumn<>("Item");
+		TableColumn<Pair<String, Object>, Object> valueColumn = new TableColumn<>("Description");
 		valueColumn.setSortable(false);
 
 		nameColumn.setCellValueFactory(new PairKeyFactory());
@@ -984,9 +887,9 @@ public class CandyJar extends Application implements Constants {
 		
 	}
 
-	public void populateTabs(TabPane tabPane, List<Pulsar> pulsars) {
+	public void populatePulsarTabs(TabPane tabPane) {
 
-		for (Pulsar pulsar : pulsars) {
+		for (Pulsar pulsar : pulsarsInBeam) {
 
 			Tab tab = new Tab();
 			tab.setText(pulsar.getName());
@@ -1141,77 +1044,17 @@ public class CandyJar extends Application implements Constants {
 
 	}
 
-	public void sortCandidates() {
-
-		candidates.addAll(candidates.stream().sorted(Comparator.comparing(f -> {
-
-			Candidate candidate = (Candidate) f;
-
-			if (sortBox.getValue() != null) {
-
-				switch (sortBox.getValue()) {
-				case "FOLD_SNR":
-					return candidate.getFoldSNR();
-				case "FFT_SNR":
-					return candidate.getFftSNR();
-				case "PICS_TRAPUM":
-					return candidate.getPicsScoreTrapum();
-				case "PICS_PALFA":
-					return candidate.getPicsScorePALFA();
-				case "DM":
-					return candidate.getOptDM();
-				case "F0":
-					return candidate.getOptF0();
-				default:
-					return candidate.getFoldSNR();
-
-				}
-			} else {
-				sortBox.setValue("FOLD_SNR");
-				return candidate.getFoldSNR();
-
-			}
-
-		}).reversed()).collect(Collectors.toList()));
-
-	}
-
 	public void addAllCandidates(LocalDateTime utc, List<CANDIDATE_TYPE> types) {
 
 		candidates.clear();
 		message.setText("Loading...");
+		if(sortBox.getValue() ==null) sortBox.setValue(Candidate.DEFAULT_SORT_PARAMETER);
 		candidates.addAll(fullCandiatesList.stream()
 				.filter(f -> f.getStartUTC().equals(utc) && types.contains(f.getCandidateType()))
-				.sorted(Comparator.comparing(f -> {
-
-					Candidate candidate = (Candidate) f;
-
-					if (sortBox.getValue() != null) {
-
-						switch (sortBox.getValue()) {
-						case "FOLD_SNR":
-							return candidate.getFoldSNR();
-						case "FFT_SNR":
-							return candidate.getFftSNR();
-						case "PICS_TRAPUM":
-							return candidate.getPicsScoreTrapum();
-						case "PICS_PALFA":
-							return candidate.getPicsScorePALFA();
-						case "DM":
-							return candidate.getOptDM();
-						case "F0":
-							return candidate.getOptF0();
-						default:
-							return candidate.getFoldSNR();
-
-						}
-					} else {
-						sortBox.setValue("FOLD_SNR");
-						return candidate.getFoldSNR();
-
-					}
-
-				}).reversed()).collect(Collectors.toList()));
+				.sorted(Comparator.comparing(f -> Candidate.SORTABLE_PARAMETERS_MAP.get(sortBox.getValue())
+																					.apply((Candidate) f))
+								.reversed())
+				.collect(Collectors.toList()));
 
 		candidates.stream().forEach(f -> {
 			if (f.getImage() == null) {
@@ -1241,6 +1084,10 @@ public class CandyJar extends Application implements Constants {
 
 			}
 		});
+		
+		chartViewer.clearMap();
+		chartViewer.addToMap(CANDIDATE_PLOT_CATEGORY.ALL, candidates);
+		chartViewer.getAllCandidates().addAll(candidates);
  
 	}
 
@@ -1256,6 +1103,7 @@ public class CandyJar extends Application implements Constants {
 		imageView.setImage(candidate.getImage());
 		imageView.setUserData(candidate);
 		updateTab(candidateTab, candidate);
+		updateDiagnosticTab(infoPane, candidate);
 		// pulsarPane.getTabs().add(candidateTab);
 
 		counterLabel.setText((imageCounter + 1) + "/" + candidates.size());
@@ -1279,16 +1127,16 @@ public class CandyJar extends Application implements Constants {
 		beamMapChart.getData().add(selectedCandidateSeries);
 
 		switch (candidate.getCandidateType()) {
-		case TIER1_CANDIDATE:
+		case T1_CAND:
 			tier1.setSelected(true);
 			break;
-		case TIER2_CANDIDATE:
+		case T2_CAND:
 			tier2.setSelected(true);
 			break;
 		case RFI:
 			rfi.setSelected(true);
 			break;
-		case KNOWN_PULSAR:
+		case KNOWN_PSR:
 			knownPulsar.setSelected(true);
 			break;
 		case NOISE:
@@ -1297,8 +1145,9 @@ public class CandyJar extends Application implements Constants {
 
 		}
 
-		pulsarPane.requestLayout();
-
+		infoPane.requestLayout();
+		
+		chartViewer.addToMap(CANDIDATE_PLOT_CATEGORY.CURRENTLY_VIEWING, Arrays.asList(candidate));
 	}
 
 	
@@ -1306,7 +1155,7 @@ public class CandyJar extends Application implements Constants {
 	public void configureLayout() {
 		
 		
-		Rectangle2D bounds  = currentScreen.getVisualBounds();
+		Rectangle2D bounds  = primaryScreen.getVisualBounds();
 		
 		Insets insets = Constants.DEFAULT_INSETS;
 
@@ -1346,7 +1195,7 @@ public class CandyJar extends Application implements Constants {
 		
 		beamMapChart.setMinHeight(0.5*leftCentreHeight);
 
-		VBox centerLeft = new VBox(10, beamMapChart, pulsarPane, actionsBox);
+		VBox centerLeft = new VBox(10, beamMapChart, infoPane, actionsBox);
 		centerLeft.setPrefSize(remainingWidth, leftCentreHeight);
 		VBox.setVgrow(centerLeft, Priority.ALWAYS);
 
@@ -1452,10 +1301,15 @@ public class CandyJar extends Application implements Constants {
 	static CommandLineParser parser = new DefaultParser();
 	static Options options = new Options();
 	static CommandLine commandLine;
+    private static final Logger LOGGER = LoggerFactory.getLogger(Chart.class);
+    
+    
 
 	
 	public static void main(String[] args) throws IOException {
 		
+		LOGGER.atDebug().addArgument("test");
+	
 		System.err.println("*************************Candy Jar V1.0-alpha*******************************");
 		
 		if(System.getenv("PSRCAT_DIR") != null) {
@@ -1466,17 +1320,20 @@ public class CandyJar extends Application implements Constants {
 		
 		Locale.setDefault(Locale.US);
 
-		
-		Option selectScreen  = new Option("s","screen", true, "Choose which screen to open the application in. Use --list_screens to get a list of screens");
+		Option selectPrimaryScreen  = new Option("s1","primary_screen", true, "Choose primary screen to open the application in. Use --list_screens to get a list of screens");
+		Option selectSecondaryScreen  = new Option("s2","secondary_screen", true, "Choose secondary screen to open the application in. Use --list_screens to get a list of screens");
+		Option numCharts = new Option("n","num_charts", true, "Number of charts needed on the secondary screen (Min:"+ minNumCharts+", max:"+ maxNumCharts+")");
 		Option help = new Option("h","help",false, "show this help message");
 		Option listScreens = new Option("l","list_screens",false, "List available screens");
 		
 		Option addPsrcatDB = new Option("d","add_psrcat_db",true, "Add a psrcat database to get known pulsars from");
 		
-		options.addOption(selectScreen);
+		options.addOption(selectPrimaryScreen);
+		options.addOption(selectSecondaryScreen);
 		options.addOption(help);
 		options.addOption(listScreens);
 		options.addOption(addPsrcatDB);
+		options.addOption(numCharts);
 
 		try{
 			
@@ -1485,6 +1342,16 @@ public class CandyJar extends Application implements Constants {
 			if(hasOption(help)){
 				help();
 				System.exit(0);
+			}
+			
+			if(hasOption(numCharts)){
+				Integer value = Integer.parseInt(getValue(numCharts));
+				if(value < minNumCharts || value > maxNumCharts) {
+					System.err.println("Enter valid number of charts.");
+					System.exit(0);
+				}
+				
+				CandyJar.numCharts = value;
 			}
 			
 			if(hasOption(listScreens)) {
@@ -1496,8 +1363,8 @@ public class CandyJar extends Application implements Constants {
 				}
 				System.exit(0);
 			}
-			if(hasOption(selectScreen)) {
-				Integer value = Integer.parseInt(getValue(selectScreen));
+			if(hasOption(selectPrimaryScreen)) {
+				Integer value = Integer.parseInt(getValue(selectPrimaryScreen));
 				
 				if(value < 0 || value > Screen.getScreens().size()) {
 					
@@ -1506,10 +1373,29 @@ public class CandyJar extends Application implements Constants {
 					
 				}
 				
-				currentScreen = Screen.getScreens().get(value-1);
+				primaryScreen = Screen.getScreens().get(value-1);
 				
 				
 			}
+			
+			if(hasOption(selectSecondaryScreen)) {
+				Integer value = Integer.parseInt(getValue(selectSecondaryScreen));
+				
+				if(value < 0 || value > Screen.getScreens().size()) {
+					
+					System.err.println("Enter valid screen number.");
+					System.exit(0);
+					
+				}
+				
+				secondaryScreen = Screen.getScreens().get(value-1);
+				
+				
+			}
+			else {
+				secondaryScreen = primaryScreen;
+			}
+			
 			
 			if(hasOption(addPsrcatDB)) {
 				String value = getValue(addPsrcatDB);
@@ -1519,10 +1405,10 @@ public class CandyJar extends Application implements Constants {
 			e.printStackTrace();
 		}
 		
+		
 
 		Application.launch(CandyJar.class);
 
-		//launch(args);
 	}
 	
 	public static boolean hasOption(Option option){
@@ -1538,8 +1424,152 @@ public class CandyJar extends Application implements Constants {
 		HelpFormatter formater = new HelpFormatter();
 		formater.printHelp("CandyJar", options);
 	}
+
 	
 	
+	/* Code for chart zooming */
+
+	Rectangle rect;
+	SimpleDoubleProperty rectinitX = new SimpleDoubleProperty();
+	SimpleDoubleProperty rectinitY = new SimpleDoubleProperty();
+	SimpleDoubleProperty rectX = new SimpleDoubleProperty();
+	SimpleDoubleProperty rectY = new SimpleDoubleProperty();
+
+	EventHandler<MouseEvent> mouseHandler = new EventHandler<MouseEvent>() {
+
+		@Override
+		public void handle(MouseEvent mouseEvent) {
+
+			Bounds chartSceneBounds = beamMapChart.localToScene(beamMapChart.getBoundsInLocal());
+
+			if (mouseEvent.getButton() == MouseButton.SECONDARY) {
+				
+				((NumberAxis) beamMapChart.getXAxis()).setLowerBound(initXLowerBound);
+				((NumberAxis) beamMapChart.getXAxis()).setUpperBound(initXUpperBound);
+				((NumberAxis) beamMapChart.getXAxis()).setTickUnit((initXUpperBound - initXLowerBound) / 10.0);
+
+				((NumberAxis) beamMapChart.getYAxis()).setLowerBound(initYLowerBound);
+				((NumberAxis) beamMapChart.getYAxis()).setUpperBound(initYUpperBound);
+				((NumberAxis) beamMapChart.getYAxis()).setTickUnit((initXUpperBound - initXLowerBound) / 10.0);
+
+			}
+
+			if (mouseEvent.getButton() == MouseButton.PRIMARY) {
+
+				if (mouseEvent.getEventType() == MouseEvent.MOUSE_PRESSED) {
+
+					rect.setX(mouseEvent.getX() + chartSceneBounds.getMinX());
+					rect.setY(mouseEvent.getY() + chartSceneBounds.getMinY());
+					rectinitX.set(mouseEvent.getX() + chartSceneBounds.getMinX());
+					rectinitY.set(mouseEvent.getY() + chartSceneBounds.getMinY());
+
+				}
+
+				else if (mouseEvent.getEventType() == MouseEvent.MOUSE_DRAGGED) {
+
+					double newX = mouseEvent.getX() + chartSceneBounds.getMinX();
+					double newY = mouseEvent.getY() + chartSceneBounds.getMinY();
+
+					newX = newX > chartSceneBounds.getMaxX() ? chartSceneBounds.getMaxX() : newX;
+					newY = newY > chartSceneBounds.getMaxY() ? chartSceneBounds.getMaxY() : newY;
+
+					rectX.set(newX);
+					rectY.set(newY);
+					
+				} else if (mouseEvent.getEventType() == MouseEvent.MOUSE_RELEASED) {
+
+					System.err.println("released:" + mouseEvent.getX() + " " + mouseEvent.getY());
+
+					if ((rectinitX.get() >= rectX.get()) && (rectinitY.get() >= rectY.get())) {
+						@SuppressWarnings("unchecked")
+						double X = mouseEvent.getX() + chartSceneBounds.getMinX();
+						double Y = mouseEvent.getY() + chartSceneBounds.getMinY();
+
+						NumberAxis yAxis = (NumberAxis) beamMapChart.getYAxis();
+						double Tgap = yAxis.getHeight() / (yAxis.getUpperBound() - yAxis.getLowerBound());
+						double axisShift = getSceneShiftY(yAxis);
+						double ptY = yAxis.getUpperBound() - ((Y - axisShift) / Tgap);
+
+						NumberAxis xAxis = (NumberAxis) beamMapChart.getXAxis();
+
+						Tgap = xAxis.getWidth() / (xAxis.getUpperBound() - xAxis.getLowerBound());
+						axisShift = getSceneShiftX(xAxis);
+						double ptX = ((X - axisShift) / Tgap) + xAxis.getLowerBound();
+
+					} else {
+
+						double Tgap = 0;
+						double newLowerBound, newUpperBound, axisShift;
+						double xScaleFactor, yScaleFactor;
+						double xaxisShift, yaxisShift;
+						// Zoom in Y-axis by changing bound range.
+						NumberAxis yAxis = (NumberAxis) beamMapChart.getYAxis();
+						Tgap = yAxis.getHeight() / (yAxis.getUpperBound() - yAxis.getLowerBound());
+						axisShift = getSceneShiftY(yAxis);
+						yaxisShift = axisShift;
+
+						newUpperBound = yAxis.getUpperBound() - ((rectinitY.get() - axisShift) / Tgap);
+						newLowerBound = yAxis.getUpperBound() - ((rectY.get() - axisShift) / Tgap);
+
+						if (newUpperBound > yAxis.getUpperBound())
+							newUpperBound = yAxis.getUpperBound();
+
+						yScaleFactor = (yAxis.getUpperBound() - yAxis.getLowerBound())
+								/ (newUpperBound - newLowerBound);
+						yAxis.setLowerBound(newLowerBound);
+						yAxis.setUpperBound(newUpperBound);
+
+						yAxis.setTickUnit((newUpperBound - newLowerBound) / 10.0);
+						// Zoom in X-axis by removing first and last data values.
+
+						NumberAxis xAxis = (NumberAxis) beamMapChart.getXAxis();
+
+						Tgap = xAxis.getWidth() / (xAxis.getUpperBound() - xAxis.getLowerBound());
+						axisShift = getSceneShiftX(xAxis);
+						xaxisShift = axisShift;
+
+						newLowerBound = ((rectinitX.get() - axisShift) / Tgap) + xAxis.getLowerBound();
+						newUpperBound = ((rectX.get() - axisShift) / Tgap) + xAxis.getLowerBound();
+
+						if (newUpperBound > xAxis.getUpperBound())
+							newUpperBound = xAxis.getUpperBound();
+
+						xScaleFactor = (xAxis.getUpperBound() - xAxis.getLowerBound())
+								/ (newUpperBound - newLowerBound);
+						xAxis.setLowerBound(newLowerBound);
+						xAxis.setUpperBound(newUpperBound);
+						xAxis.setTickUnit((newUpperBound - newLowerBound) / 10.0);
+
+					}
+
+					rectX.set(0);
+					rectY.set(0);
+
+				}
+
+			}
+		}
+
+	};
+
+	private static double getSceneShiftX(Node node) {
+		double shift = 0;
+		do {
+			shift += node.getLayoutX();
+			node = node.getParent();
+		} while (node != null);
+		return shift;
+	}
+
+	private static double getSceneShiftY(Node node) {
+		double shift = 0;
+		do {
+			shift += node.getLayoutY();
+			node = node.getParent();
+		} while (node != null);
+		return shift;
+	}
+
 	
 	
 }
