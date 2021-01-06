@@ -121,7 +121,7 @@ public class CandyJar extends Application implements Constants {
 	BorderPane mainBorderPane = new BorderPane();
 	
 	/*Top Left: Load directory and CSV */
-	File baseDir = new File("/Users/vkrishnan/trashcan/MLGPS/msgps_run_3_and_4_candidate_cut");
+	File baseDir = null;
 	TextAndButton rootDirTB = new TextAndButton(null,"Results directory","Get pointings", 10);
 	Button fileSelectButton = new Button("...");
 	final Button loadClassification = new Button("Load classification");
