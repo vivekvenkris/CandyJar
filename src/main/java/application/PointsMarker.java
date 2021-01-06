@@ -49,10 +49,7 @@ public class PointsMarker extends Zoomer{
         filterButton  = new Button("filter",  new Glyph(FONT_AWESOME, "\uf0b0").size(FONT_SIZE));
         resetButton = new Button("reset",  new Glyph(FONT_AWESOME, "\uf071").size(FONT_SIZE));
     	HBox buttonBar = super.getZoomInteractorBar();
-    	
-    	System.err.println(shortlistButton == null);
-    	System.err.println(filterButton == null);
-    	
+
     	if(shortlistButton == null) {
     		return buttonBar;
     	}
