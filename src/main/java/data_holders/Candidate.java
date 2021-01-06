@@ -3,11 +3,20 @@ package data_holders;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
-import constants.Constants.CANDIDATE_TYPE;
+import de.gsi.chart.marker.DefaultMarker;
+import de.gsi.chart.marker.Marker;
+import de.gsi.dataset.spi.utils.Tuple;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
 import utilitites.Utilities;
+
+
 
 public class Candidate {
 	
@@ -52,7 +61,12 @@ public class Candidate {
 	private Image image; 
 	
 	private List<Candidate> similarParamCandidates; 
+	
+	
+	private boolean visible;
+	
 
+	
 	
 	public Candidate(){
 		similarParamCandidates = new ArrayList<Candidate>();
@@ -101,6 +115,7 @@ public class Candidate {
 		this.candidateType = candidateType;
 		
 		similarParamCandidates = new ArrayList<Candidate>();
+		
 	}
 
 	public Candidate(String line) {
@@ -143,11 +158,13 @@ public class Candidate {
 
 		
 		
-		this.candidateType = CANDIDATE_TYPE.UNCATEGORIZED;
+		this.candidateType = CANDIDATE_TYPE.UNCAT;
 		
 		this.utcString = Utilities.getUTCString(startUTC, DateTimeFormatter.ISO_DATE_TIME);
 		
 		similarParamCandidates = new ArrayList<Candidate>();
+		
+
 		
 	}
 	
@@ -454,7 +471,8 @@ public class Candidate {
 		this.similarParamCandidates = similarParamCandidates;
 	}
 
-	
+
+
 	public boolean isSimilarTo(Candidate c2) {
 		
 		if (Math.abs(this.getOptDM() - c2.getOptDM()) /this.getOptDMErr() < 1 &&
@@ -465,5 +483,268 @@ public class Candidate {
 		
 	}
 	
+	
+	public Tuple<Double, Double> getOptDMTuple(){
+		return new Tuple<Double, Double>(getOptDM(), getOptDMErr());
+	}
+	
+	public Tuple<Double, Double> getOptF0Tuple(){
+		return new Tuple<Double, Double>(getOptF0(), getOptF0Err());
+	}
+	
+	
+	public Tuple<Double, Double> getOptF1Tuple(){
+		return new Tuple<Double, Double>(getOptF1(), getOptF1Err());
+	}
+	
+	
+	public Tuple<Double, Double> getOptAccTuple(){
+		return new Tuple<Double, Double>(getOptAcc(), getOptAccErr());
+	}
+	
+	public Tuple<Double, Double> getPicsPALFATuple(){
+		return new Tuple<Double, Double>(getPicsScorePALFA(),null);
+	}
+
+	public Tuple<Double, Double> getPicsTrapumTuple(){
+		return new Tuple<Double, Double>(getPicsScoreTrapum(),null);
+	}
+
+	public Tuple<Double, Double> getFoldSNRTuple(){
+		return new Tuple<Double, Double>(getFoldSNR(),null);
+	}
+	
+	public Tuple<Double, Double> getFftSNRTuple(){
+		return new Tuple<Double, Double>(getFftSNR(),null);
+	}
+	
+	
+	public Tuple<Double, Double> getRaTuple(){
+		return new Tuple<Double, Double>(getRa().getDecimalHourValue(),null);
+	}
+	
+	public Tuple<Double, Double> getDecTuple(){
+		return new Tuple<Double, Double>(getDec().getDegreeValue(),null);
+	}
+	
+	
+	public Tuple<Double, Double> getBeamNumberTuple(){
+		return new Tuple<Double, Double>(Beam.getIntegerBeamName(getBeamName()).doubleValue(), null);
+	}
+	
+	public Double getBeamNumber(){
+		return Beam.getIntegerBeamName(getBeamName()).doubleValue();
+	}
+	
+
+	
+	public static Tuple<Double, Double> getMinMax(List<Candidate> candidates, Function<Candidate, Tuple<Double, Double>> valueFunction) {
+		
+		Double min = valueFunction.apply(
+				candidates.stream()
+						  .min((first, second) -> Double.compare(valueFunction.apply(first).getXValue(), valueFunction.apply(second).getXValue()))
+						  .get()
+						  ).getXValue();
+		
+		Double max = valueFunction.apply(
+				candidates.stream()
+						  .max((first, second) -> Double.compare(valueFunction.apply(first).getXValue(), valueFunction.apply(second).getXValue()))
+						  .get()
+						  ).getXValue();
+		return new Tuple<Double, Double>(min, max);
+		
+	}
+
+	
+	
+	private static Map<String, Function<Candidate, Double>>  sortableParameters() {
+		Map<String, Function<Candidate, Double>> sortableValuesMap = 
+				new LinkedHashMap<String, Function<Candidate, Double>>();
+		
+		sortableValuesMap.put("DM", Candidate::getOptDM);
+		sortableValuesMap.put("F0", Candidate::getOptF0);
+		sortableValuesMap.put("F1", Candidate::getOptF1);
+		sortableValuesMap.put("ACC", Candidate::getOptAcc);
+		sortableValuesMap.put("FOLD_SNR", Candidate::getFoldSNR);
+		sortableValuesMap.put("FFT_SNR", Candidate::getFftSNR);
+		sortableValuesMap.put("PICS_TRAPUM", Candidate::getPicsScoreTrapum);
+		sortableValuesMap.put("PICS_PALFA", Candidate::getPicsScorePALFA);
+		sortableValuesMap.put("BEAM_NUM", Candidate::getBeamNumber);
+		return sortableValuesMap;
+	}
+
+	
+	private static Map<String, Function<Candidate, Tuple<Double, Double>>>  plottableParameters() {
+		Map<String, Function<Candidate, Tuple<Double, Double>>> plottableValuesMap = 
+				new LinkedHashMap<String, Function<Candidate, Tuple<Double, Double>>>();
+		
+		
+		plottableValuesMap.put("DM", Candidate::getOptDMTuple);
+		plottableValuesMap.put("F0", Candidate::getOptF0Tuple);
+		plottableValuesMap.put("F1", Candidate::getOptF1Tuple);
+		plottableValuesMap.put("ACC", Candidate::getOptAccTuple);
+		plottableValuesMap.put("FOLD_SNR", Candidate::getFoldSNRTuple);
+		plottableValuesMap.put("FFT_SNR", Candidate::getFftSNRTuple);
+		plottableValuesMap.put("PICS_TRAPUM", Candidate::getPicsTrapumTuple);
+		plottableValuesMap.put("PICS_PALFA", Candidate::getPicsPALFATuple);
+		plottableValuesMap.put("BEAM_NUM", Candidate::getBeamNumberTuple);
+		plottableValuesMap.put("RA", Candidate::getRaTuple);
+		plottableValuesMap.put("DEC", Candidate::getDecTuple);
+
+		return plottableValuesMap;
+	}
+	
+	
+	private static Map<String, String> parameterUnits(){
+		Map<String, String> unitsMap = new LinkedHashMap<String, String>();
+		
+		unitsMap.put("DM", "pc/cc");
+		unitsMap.put("F0", "Hz");
+		unitsMap.put("F1", "Hz/Hz");
+		unitsMap.put("ACC", "m/s^2");
+		unitsMap.put("FOLD_SNR", null);
+		unitsMap.put("FFT_SNR", null);
+		unitsMap.put("PICS_TRAPUM", null);
+		unitsMap.put("PICS_PALFA", null);
+		unitsMap.put("BEAM_NUM", null);
+		unitsMap.put("RA", "hours");
+		unitsMap.put("DEC", "degrees");
+		
+		return unitsMap;
+		
+	}
+	
+
+	public static final Map<String, String> PARAMETER_UNITS_MAP = parameterUnits();
+	public static final Map<String, Function<Candidate, Double>>  SORTABLE_PARAMETERS_MAP = sortableParameters();
+	public static final String DEFAULT_SORT_PARAMETER = "FOLD_SNR";
+
+	public static final Map<String, Function<Candidate, Tuple<Double, Double>>>  PLOTTABLE_PARAMETERS_MAP = plottableParameters();
+	
+	
+	public enum CANDIDATE_TYPE {
+		KNOWN_PSR, 
+		T1_CAND,
+		T2_CAND,
+		RFI, 
+		NOISE,
+		UNCAT;
+	}
+	
+	
+	public enum CANDIDATE_PLOT_CATEGORY{
+		ALL,
+		MARKED,
+		CURRENTLY_VIEWING
+	}
+
+
+	/**
+	 * Marked for removal due to bug in graphics context plotting unfilled shapes. 
+	 * @return
+	 */
+	@Deprecated
+	private Marker getMarkerByCandidateType() {
+		Marker marker = null;
+		
+		switch (this.getCandidateType()) {
+		case T1_CAND:
+			marker = DefaultMarker.DIAMOND;
+			break;
+		case T2_CAND:
+			marker = DefaultMarker.DIAMOND;
+			break;
+		case RFI:
+			marker = DefaultMarker.CROSS;
+			break;
+		case KNOWN_PSR:
+			marker = DefaultMarker.PLUS;
+			break;
+		case NOISE:
+			marker = DefaultMarker.RECTANGLE2;
+			break;
+		case UNCAT:
+			marker = DefaultMarker.CIRCLE;
+
+		}
+		return marker;
+		
+	}
+	
+	
+	public static Color getColorByCandidateType(CANDIDATE_TYPE type) {
+		Color color = null;
+		
+		switch (type) {
+		case T1_CAND:
+			color = Color.DEEPSKYBLUE.deriveColor(0, 1, 1, 0.9);
+			break;
+		case T2_CAND:
+			color = Color.DEEPSKYBLUE.deriveColor(0, 1, 1, 0.3);
+			break;
+		case RFI:
+			color =  Color.DARKORANGE.deriveColor(0, 1, 1, 0.5);
+			break;
+		case KNOWN_PSR:
+			color = Color.DARKVIOLET.deriveColor(0, 1, 1, 0.5);
+			break;
+		case NOISE:
+			color = Color.ROSYBROWN.deriveColor(0, 1, 1, 0.8);
+			break;
+		case UNCAT:
+			color = Color.DARKGREY.deriveColor(0, 1, 1, 0.5);
+
+		}
+		return color;
+		
+	}
+	
+	
+	
+	private Color getColorByCandidateType() {
+		return Candidate.getColorByCandidateType(this.getCandidateType());
+		
+	}
+	public String getStyle(Integer size, Integer index) {
+		return getStyle(null, null, size, index);
+	}
+	
+	public String getStyle(Color color, Integer size, Integer index) {
+		return getStyle(null, color, size, index);
+	}
+	
+	public String getStyle(Marker marker, Integer size, Integer index) {
+		return getStyle(marker, null, size, index);
+	}
+	
+	public String getStyle(Marker marker, Color color, Integer size, Integer index) {
+		
+		String style = "";
+		
+		if(marker == null) marker = DefaultMarker.CIRCLE;
+		if(color == null) color = getColorByCandidateType();
+		
+		style += "markerSize=" + size+ ";";
+		style += "markerColor=" + color + ";";
+		style+= "strokeColor="+ color + ";";
+		style+= "fillColor="+ color + ";";
+		style += "markerType=" + marker + ";";
+		if (index != null) style += "index=" + index + ";";
+		
+
+		return style;
+		
+	}
+	
+	
+	
+	public boolean isVisible() {
+		return visible;
+	}
+
+	public void setVisible(boolean visible) {
+		this.visible = visible;
+	}
+
 
 }
