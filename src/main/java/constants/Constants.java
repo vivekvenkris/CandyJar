@@ -7,6 +7,8 @@ import javafx.geometry.Insets;
 
 public interface Constants {
 	
+
+
 	 
 	String rfiColor = "#ff0000";
 	String newColor = "#00ff00";
@@ -46,15 +48,7 @@ public interface Constants {
 	
 	String commonUTCFormat = "yyyy-MM-dd:kk:mm:ss";
 	
-	enum CANDIDATE_TYPE {
-		KNOWN_PULSAR, 
-		TIER1_CANDIDATE,
-		TIER2_CANDIDATE,
-		RFI, 
-		NOISE,
-		UNCATEGORIZED
-	}
-	
+
 	Integer DEFAULT_IMAGE_WIDTH=1000;
 	Integer DEFAULT_IMAGE_HEIGHT=1000;
 
