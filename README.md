@@ -1,4 +1,4 @@
-# CandyJar V1.0
+# CandyJar V2.0 - alpha
 Candidate Viewer for TRAPUM and MPIFR pulsar surveys with the MeerKAT telescope
 
 For now, releases will not be given as `jar` files. Please build from source using `gradle`. The application needs `Java 14` or above to run. Please start with installing JAVA and then you can build and run the application. 
@@ -96,13 +96,33 @@ cd CandyJar
 and to run the application, please do `./gradlew run`
 
 This should open the application on your primary screen. You can provide commandline arguments like the following `./gradlew run --args="your arguments"`
-You can check `./gradlew run --args="-h"` for a list of available arguments. 
+You can check `./gradlew run --args="-h"` for a list of available arguments. It should display something like this:
 
-Once you run the program, you will find a text field where you can add a candidate directory. You can also use the directory selector button (with the three dots) to navigate and select the directory. Once done, click on `Get Pointings` to load all the UTCs. 
+```
+ *************************Candy Jar V2.0-alpha*******************************
+usage: CandyJar
+ -d,--add_psrcat_db <arg>       Add a psrcat database to get known pulsars
+                                from
+ -h,--help                      show this help message
+ -l,--list_screens              List available screens
+ -n,--num_charts <arg>          Number of charts needed on the secondary
+                                screen (Min:0, max:3)
+ -s1,--primary_screen <arg>     Choose primary screen to open the
+                                application in. Use --list_screens to get
+                                a list of screens
+ -s2,--secondary_screen <arg>   Choose secondary screen to open the
+                                application in. Use --list_screens to get
+                                a list of screens
+```
+ 
+
+Once you run the program, you will find a text field where you can add a candidate directory. You can also use the directory selector button (with the three dots) to navigate and select the directory. This is the directory that contains the `candidates.csv` file. Once done, click on `Get Pointings` to load all the UTCs. 
 
 At this point, if you already have the output of a partial classification, you can add it using "load classification". Otherwise, ignore that button, and start selecting the UTC of your choice. 
 
-Once you select the UTC, the corresponding beam map will be drawn below. Now you can filter and sort candidates if you need to and click `Go` to start viewing the candidates. You can use the buttons for navigation and classification or use the corresponding keys (given in paranthesis) on your keyboard. For smaller screens, you can also press the spacebar to open the current PNG file using your default PNG viewer in full resolution. 
+Once you select the UTC, the corresponding beam map will be drawn below along with information on neighbouring pulsars (if any). Now you can filter and sort candidates using the corresponding dropdown menus and click `Go` to start viewing the candidates. Once you hit `Go`, if you have asked for a plotting interface, the corresponding window will appear where you can select the parameters of your choice to plot. On the main window, you can use the buttons for navigation and classification or use the corresponding keys (given in paranthesis). For smaller screens, you can also press the spacebar to open the current PNG file using your default PNG viewer in full resolution. 
+
+On the secondary window, hovering over the plot title will bring up the tool bar which will allow you to zoom, pan, and mark candidates. 
 
 Once the classification is done, you can press the "Save classification" button to write out your classification to a CSV file. 
 
