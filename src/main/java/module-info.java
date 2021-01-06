@@ -15,6 +15,7 @@ module candyjar {
 	requires transitive javafx.swing;
 	requires  commons.io;
 	requires  commons.cli;
+	requires org.slf4j;
 	
     
     opens application to javafx.fxml;
