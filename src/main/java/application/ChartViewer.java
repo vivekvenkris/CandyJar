@@ -16,20 +16,17 @@ import data_holders.Candidate.CANDIDATE_TYPE;
 import de.gsi.chart.XYChart;
 import de.gsi.chart.axes.Axis;
 import de.gsi.chart.axes.spi.DefaultNumericAxis;
-import de.gsi.chart.legend.Legend;
 import de.gsi.chart.marker.DefaultMarker;
 import de.gsi.chart.marker.Marker;
 import de.gsi.chart.plugins.DataPointTooltip;
 import de.gsi.chart.plugins.MouseEventsHelper;
 import de.gsi.chart.plugins.Panner;
-import de.gsi.chart.plugins.Zoomer;
 import de.gsi.chart.renderer.ErrorStyle;
 import de.gsi.chart.renderer.LineStyle;
 import de.gsi.chart.renderer.spi.ErrorDataSetRenderer;
 import de.gsi.chart.ui.geometry.Side;
 import de.gsi.dataset.spi.DefaultErrorDataSet;
 import de.gsi.dataset.spi.utils.Tuple;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -37,8 +34,8 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -155,15 +152,14 @@ public class ChartViewer {
 
 			@Override
 			public void handle(WindowEvent event) {
-				Platform.exit();
-				//					event.consume();
-				//					Alert alert = new Alert(AlertType.INFORMATION);
-				//
-				//					alert.setTitle("Closing window alert");
-				//					alert.setHeaderText("You cannot close this window.");
-				//					alert.setContentText("Please close the primary window to close the application.");
-				//
-				//					alert.showAndWait();
+									event.consume();
+									Alert alert = new Alert(AlertType.INFORMATION);
+				
+									alert.setTitle("Closing window alert");
+									alert.setHeaderText("You cannot close this window.");
+									alert.setContentText("Please close the primary window to close the application.");
+				
+									alert.showAndWait();
 
 			}
 		});
