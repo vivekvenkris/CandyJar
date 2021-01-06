@@ -5,12 +5,23 @@ import java.io.FileFilter;
 import java.time.LocalDateTime;
 
 import data_holders.Angle;
+import de.gsi.chart.marker.Marker;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
 
 public interface AppUtils {
+	
+	Marker ROUNDED_RECTANGLE = new Marker() {
+		
+		@Override
+		public void draw(GraphicsContext gc, double x, double y, double size) {
+	        gc.fillRoundRect(x - size, y - size, 2.0 * size, 2.0 * size, size,  size);
+			
+		}
+	};
 	
 	Callback<ListView<LocalDateTime>, ListCell<LocalDateTime>> utcViewFactory = new Callback<ListView<LocalDateTime>,ListCell<LocalDateTime>>(){
 	    @Override
