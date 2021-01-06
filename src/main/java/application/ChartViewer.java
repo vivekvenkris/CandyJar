@@ -356,7 +356,6 @@ public class ChartViewer {
 					
 					markingConstraintsList.add(markingConstraints);
 					
-					System.err.println("inside action" + markingConstraintsList);
 					
 					addMarkedCandidates();
 					
