@@ -628,7 +628,6 @@ public class CandyJar extends Application implements Constants {
 				loadFileChooser.setInitialFileName(baseDir.getName() + "_" + userName);
 				File loadFile = loadFileChooser.showOpenDialog(stage);
 
-				Optional<ButtonType> result = null;
 				
 				if(loadFile == null) {
 					message.setText("Aborted loading existing classification.");
@@ -1310,7 +1309,7 @@ public class CandyJar extends Application implements Constants {
 		
 		LOGGER.atDebug().addArgument("test");
 	
-		System.err.println("*************************Candy Jar V1.0-alpha*******************************");
+		System.err.println("*************************Candy Jar V2.0-alpha*******************************");
 		
 		if(System.getenv("PSRCAT_DIR") != null) {
 			PsrcatConstants.psrcatDBs.add(System.getenv("PSRCAT_DIR") + File.separator + "psrcat.db");
@@ -1402,7 +1401,9 @@ public class CandyJar extends Application implements Constants {
 				PsrcatConstants.psrcatDBs.add(value);
 			}
 		}catch(Exception e){
-			e.printStackTrace();
+			System.err.println(e.getMessage());
+			help();
+			System.exit(0);
 		}
 		
 		
