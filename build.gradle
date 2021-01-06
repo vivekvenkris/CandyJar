@@ -56,13 +56,13 @@ jlink {
 configurations.all {
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
         if (details.requested.name == 'log4j') {
-            details.useTarget "org.slf4j:slf4j-api:1.7.3"
+            details.useTarget "org.slf4j:slf4j-api:2.0.0-alpha1"
         }
 	}
 	resolutionStrategy {
 	
-	force("org.slf4j:slf4j-api:1.7.3")
-	force("org.slf4j:slf4j-simple:1.7.3")
+	force("org.slf4j:slf4j-api:2.0.0-alpha1")
+	force("org.slf4j:slf4j-simple:2.0.0-alpha1")
 	
 	
 	
@@ -164,7 +164,10 @@ dependencies {
 	implementation (group: 'commons-cli', name: 'commons-cli', version: '1.4')
 	
 	
-	
+		
+	implementation (group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.0-alpha1')
+
+	implementation (group: 'org.slf4j', name: 'slf4j-api', version: '2.0.0-alpha1')
 
 
 }
