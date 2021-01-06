@@ -98,7 +98,7 @@ public class MyScatterChart extends ScatterChart<Number, Number> {
 					rotate.setPivotX(x1);
 					rotate.setPivotY(y1);
 					
-					Integer beamNo = Integer.parseInt(b.getName().replaceAll("cfbf", ""));
+					Integer beamNo = b.getIntegerBeamName();
 					
 					e.getTransforms().add(rotate);
 					if(name.equals(Constants.DEFAULT_BEAM_MAP)) {
