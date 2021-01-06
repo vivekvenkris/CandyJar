@@ -13,6 +13,15 @@ public class Beam {
 	private EllipseConfig ellipseConfig;
 	List<Beam> neighbourBeams;
 	
+	private Integer integerBeamName;
+	
+	
+	public static Integer getIntegerBeamName(String beamName) {
+		if(beamName.contains("ifbf")) return -1;
+		else {
+			return Integer.parseInt(beamName.replaceAll("\\D+", ""));
+		}
+	}
 	
 	public Beam() {
 		
@@ -28,6 +37,7 @@ public class Beam {
 		this.coordinates = chunks[1];
 		this.ra = new Angle(chunks[2].strip(), Angle.HHMMSS);
 		this.dec = new Angle(chunks[3].strip(), Angle.DDMMSS);
+		this.integerBeamName = Beam.getIntegerBeamName(this.name);
 				
 	}
 	
@@ -39,7 +49,8 @@ public class Beam {
 		this.coordinates = chunks[1];
 		this.ra = new Angle(chunks[2].strip(), Angle.HHMMSS);
 		this.dec = new Angle(chunks[3].strip(), Angle.DDMMSS);
-				
+		this.integerBeamName = Beam.getIntegerBeamName(this.name);
+		
 	}
 	public Beam(String name, String csv, EllipseConfig ellipseConfig) {
 		this();
@@ -50,7 +61,8 @@ public class Beam {
 		this.ra = new Angle(chunks[2].strip(), Angle.HHMMSS);
 		this.dec = new Angle(chunks[3].strip(), Angle.DDMMSS);
 		this.ellipseConfig = ellipseConfig;
-				
+		this.integerBeamName = Beam.getIntegerBeamName(this.name);
+		
 	}
 	
 	public String getCoordString() {
@@ -122,6 +134,14 @@ public class Beam {
 	}
 	public void setEllipseConfig(EllipseConfig ellipseConfig) {
 		this.ellipseConfig = ellipseConfig;
+	}
+
+	public Integer getIntegerBeamName() {
+		return integerBeamName;
+	}
+
+	public void setIntegerBeamName(Integer integerBeamName) {
+		this.integerBeamName = integerBeamName;
 	}
 	
 
