@@ -56,7 +56,7 @@ public class KnownPulsarGuesser {
 		
 		boolean  closeInSpace = false;
 		
-		s+= "Angular distance: " + Utilities.getAngularDistance(pulsarRA, pulsarDEC, candidate.getRa(), candidate.getDec()).getDegreeValue() + "degrees. \n";
+		s+= String.format("Angular distance: %.5f", Utilities.getAngularDistance(pulsarRA, pulsarDEC, candidate.getRa(), candidate.getDec()).getDegreeValue()) + " degrees. \n";
 
 
 		return s;
