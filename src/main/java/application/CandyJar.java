@@ -259,9 +259,9 @@ public class CandyJar extends Application implements Constants {
 		beamMapXAxis.setAnimated(false);
 		beamMapYAxis.setAnimated(false);
 
-		//beamMapXAxis.setTickLabelFormatter(AppUtils.raStringConverter);
+		beamMapXAxis.setTickLabelFormatter(AppUtils.raStringConverter);
 
-		//beamMapYAxis.setTickLabelFormatter(AppUtils.decStringConverter);
+		beamMapYAxis.setTickLabelFormatter(AppUtils.decStringConverter);
 
 		filterTypes.getCheckModel().getCheckedItems().addListener(new ListChangeListener<CANDIDATE_TYPE>() {
 			public void onChanged(ListChangeListener.Change<? extends CANDIDATE_TYPE> c) {
