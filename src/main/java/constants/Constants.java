@@ -49,8 +49,8 @@ public interface Constants {
 	String commonUTCFormat = "yyyy-MM-dd:kk:mm:ss";
 	
 
-	Integer DEFAULT_IMAGE_WIDTH=1000;
-	Integer DEFAULT_IMAGE_HEIGHT=1000;
+	Integer DEFAULT_IMAGE_WIDTH=1247;
+	Integer DEFAULT_IMAGE_HEIGHT=1277;
 
 	Insets DEFAULT_INSETS = new Insets(5, 20, 5, 20);
 	
