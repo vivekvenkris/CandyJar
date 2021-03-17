@@ -113,7 +113,7 @@ public class Candidate {
 		this.filterbankPath = filterbankPath;
 		this.tarballPath = tarballPath;
 		this.candidateType = candidateType;
-		
+		this.visible = true;
 		similarParamCandidates = new ArrayList<Candidate>();
 		
 	}
@@ -164,9 +164,12 @@ public class Candidate {
 		
 		similarParamCandidates = new ArrayList<Candidate>();
 		
+		this.visible = true;
 
 		
 	}
+	
+	
 	
 	@Override
 	public String toString() {
