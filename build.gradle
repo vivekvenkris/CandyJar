@@ -182,9 +182,11 @@ application {
             "--add-opens=javafx.controls/com.sun.javafx.scene.control=org.controlsfx.controls",
             "--add-opens=javafx.controls/com.sun.javafx.scene.control.behavior=org.controlsfx.controls",
             "--add-opens=javafx.controls/javafx.scene.control.skin=org.controlsfx.controls",
-            "--add-opens=javafx.controls/com.sun.javafx.scene.control.inputmap=org.controlsfx.controls"
+            "--add-opens=javafx.controls/com.sun.javafx.scene.control.inputmap=org.controlsfx.controls",
+            "-Xms512m", 
+            "-Xmx1024m"
+            
             
             
     ]
 }
-	
