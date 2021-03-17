@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import constants.Constants;
 import data_holders.Angle;
 import data_holders.Beam;
+import de.gsi.dataset.spi.utils.Tuple;
 
 public class Utilities {
 	public static String asq(String str){ return "'"+str +"'";}
@@ -108,6 +109,21 @@ public class Utilities {
 		
 		return duration.getSeconds()  * Constants.sec2Hrs * Constants.hrs2Day;
 		
+	}
+	
+	public static boolean valueIsWithinRange(double value, double min, double max) {
+		return value >= min && value <= max;
+	}
+	
+	public static boolean valueIsOutsideRange(double value, double min, double max) {
+		return !valueIsWithinRange(value, min, max);
+	}
+	public static boolean valueIsWithinRange(double value, Tuple<Double, Double> minMax) {
+		return valueIsWithinRange(value, minMax.getXValue(), minMax.getYValue());
+	}
+	
+	public static boolean valueIsOutsideRange(double value, Tuple<Double, Double> minMax) {
+		return !valueIsWithinRange(value, minMax.getXValue(), minMax.getYValue());
 	}
 
 	
