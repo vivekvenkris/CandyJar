@@ -5,11 +5,15 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Map.Entry;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.controlsfx.glyphfont.Glyph;
+
+import application.PointsClicker.DataPoint;
 import data_holders.Candidate;
 import data_holders.Candidate.CANDIDATE_PLOT_CATEGORY;
 import data_holders.Candidate.CANDIDATE_TYPE;
@@ -31,12 +35,15 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -49,13 +56,15 @@ import javafx.scene.paint.Color;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
+import utilitites.Utilities;
 
 public class ChartViewer {
 
 	private final BorderPane mainBorderPane = new BorderPane();
 	private final 	    Stage primaryStage = new Stage();
-
 	private Scene scene = null;
+	
+	private CandyJar candyJar;
 
 	Map<Integer, CandyChart> chartSection = new LinkedHashMap<Integer, CandyChart>();
 
@@ -67,16 +76,18 @@ public class ChartViewer {
 	
 	private List<Candidate> allCandidates = new ArrayList<Candidate>();
 	
-	public ChartViewer(Screen currentScreen, Integer numCharts) {
+	public ChartViewer(Rectangle2D currentScreenBounds, Integer numCharts, CandyJar candyJar) {
 
+		this.candyJar = candyJar;
+		
 		for(int i=0; i< numCharts; i++) {
 			chartSection.put(i, new CandyChart(i));
 		}
 
-		double totalWidth = currentScreen.getBounds().getWidth();
-		double totalHeight = currentScreen.getBounds().getHeight();
+		double totalWidth = currentScreenBounds.getWidth();
+		double totalHeight = currentScreenBounds.getHeight();
 
-		configureWindow(primaryStage, currentScreen.getBounds().getMinX(), currentScreen.getBounds().getMinY(), totalWidth, totalHeight);
+		configureWindow(primaryStage, currentScreenBounds.getMinX(), currentScreenBounds.getMinY(), totalWidth, totalHeight);
 
 		candidateViewAttributesMap.put(CANDIDATE_PLOT_CATEGORY.ALL, 
 				new CandidateViewAttributes(minPointSize, CANDIDATE_PLOT_CATEGORY.ALL.toString()));
@@ -201,6 +212,72 @@ public class ChartViewer {
 
 
 	}
+	
+	public void classifyCandidates(Map<String,  Tuple<Double, Double>> filterMap, CANDIDATE_TYPE type) {
+
+		
+		this.allCandidates.forEach(f -> {
+			Candidate c = (Candidate)f;
+			
+			int num = 0;
+
+			for(Entry<String,  Tuple<Double, Double>> entry : filterMap.entrySet()) {
+				
+				String key = entry.getKey();
+
+				Function<Candidate, Tuple<Double, Double>> valueFunction = Candidate.PLOTTABLE_PARAMETERS_MAP.get(key);
+				Double value = valueFunction.apply(c).getXValue();
+				
+				if(Utilities.valueIsWithinRange(value,entry.getValue())) {
+					num++;
+				}
+				
+
+			}
+			
+			if(num == filterMap.size()) {
+				f.setCandidateType(type);
+			}
+			
+			
+			
+		});
+		candyJar.getFilterTypes().getCheckModel().check(candyJar.getFilterTypes().getCheckModel().getItemIndex(type));
+		candyJar.getFilterCandidates().fire();
+
+	}
+	
+	public void filterCandidates(Map<String,  Tuple<Double, Double>> filterMap) {
+		
+		this.allCandidates.forEach(f -> {
+			Candidate c = (Candidate)f;
+			c.setVisible(true);
+			for(Entry<String,  Tuple<Double, Double>> entry : filterMap.entrySet()) {
+				
+				String key = entry.getKey();
+
+				Function<Candidate, Tuple<Double, Double>> valueFunction = Candidate.PLOTTABLE_PARAMETERS_MAP.get(key);
+				Double value = valueFunction.apply(c).getXValue();
+				
+				
+				if(value < entry.getValue().getXValue() || value > entry.getValue().getYValue()) {
+					c.setVisible(false);
+				}
+
+			}
+			
+		});
+		
+		candyJar.getFilterCandidates().fire();
+		
+	}
+	
+	public void resetFilters() {
+		this.allCandidates.forEach(f -> f.setVisible(true));
+		candyJar.getFilterCandidates().fire();
+
+	}
+	
 
 	public void addMarkedCandidates() {
 		List<Candidate> markedCandidates = FXCollections.observableArrayList();
@@ -223,6 +300,7 @@ public class ChartViewer {
 														
 														//compare with the constraint
 														if(value < entry.getValue().getXValue() || value > entry.getValue().getYValue()) return false;
+														
 								
 														
 													}
@@ -274,11 +352,12 @@ public class ChartViewer {
 		private final  CheckBox logX = new CheckBox();
 		private final  CheckBox logY = new CheckBox();
 		private final  Button go = new Button("Go");
+		
 
 		private HBox controlBox = new HBox(10, new Label("X-Axis:"), xAxisBox, new Label("Log?:"), logX,
 				new Label("Y-Axis:"), yAxisBox, new Label("Log?:"), logY,
 				go); 
-
+	
 
 
 		public VBox getChartVBox() {
@@ -287,6 +366,7 @@ public class ChartViewer {
 
 
 		public CandyChart(Integer chartID) {
+		
 			
 			this.chartID = chartID;
 			
@@ -300,10 +380,12 @@ public class ChartViewer {
 			Panner panner = new Panner();
 			panner.setMouseFilter(event -> MouseEventsHelper.isOnlyCtrlModifierDown(event));
 
-
+			PointsClicker pointsClicker = new PointsClicker();
+			
 			chart.getPlugins().add(pointsMarker);
 			chart.getPlugins().add(dataPointTooltip);
 			chart.getPlugins().add(panner);
+			chart.getPlugins().add(pointsClicker);
 
 			HBox.setHgrow(chart, Priority.ALWAYS);
 			VBox.setVgrow(chart, Priority.ALWAYS);
@@ -333,44 +415,84 @@ public class ChartViewer {
 				}
 			});
 			
-			pointsMarker.getShortlistButton().setOnAction(new EventHandler<ActionEvent>() {
-
-				@Override
-				public void handle(ActionEvent event) {
-					
-					event.consume();
-					
-					Axis xAxis = chart.getXAxis();
-					Axis yAxis = chart.getYAxis();
-					
-					
-					Map<String, Tuple<Double, Double>> markingConstraints = new HashMap<String, Tuple<Double,Double>>();
-
-					
-					markingConstraints.put(xAxis.getName(), new Tuple<Double, Double>(xAxis.getMin(), xAxis.getMax()));
-					markingConstraints.put(yAxis.getName(), new Tuple<Double, Double>(yAxis.getMin(), yAxis.getMax()));
-					
-					markingConstraintsList.add(markingConstraints);
-					
-					
-					addMarkedCandidates();
-					
-
-					
-				}
-			});
+			pointsMarker.getShortlistButton().setOnAction( e-> {
+																	e.consume();
+																	markingConstraintsList.add(getCurrentMinMaxMap());
+																	addMarkedCandidates();
+															   });
+		
+			pointsMarker.getFilterButton().setOnAction(e-> {
+																e.consume();
+																filterCandidates(getCurrentMinMaxMap());
+														   });
 			
-			pointsMarker.getResetButton().setOnAction(new EventHandler<ActionEvent>() {
-				@Override
-				public void handle(ActionEvent event) {
-					
-					event.consume();
-					markingConstraintsList.clear();
-					addMarkedCandidates();
+			pointsMarker.getShortlistResetButton().setOnAction(e-> {
+																	e.consume();
+																	markingConstraintsList.clear();
+																	addMarkedCandidates();
+															   });
+			
+			
+			pointsMarker.getFilterResetButton().setOnAction(e -> { 
+																	e.consume(); 
+																	resetFilters();  
+																  });
 				
-				}
-			});
+			
+			pointsMarker.getClassifyBox().setOnAction(new EventHandler<ActionEvent>() {
+					
+					@Override
+					public void handle(ActionEvent event) {
+						event.consume();
+						
+						Alert alert = new Alert(AlertType.CONFIRMATION);
+						
+						Map<String, Tuple<Double, Double>> currentMinMaxMap = getCurrentMinMaxMap();
+						
+						CANDIDATE_TYPE type = pointsMarker.getClassifyBox().getValue();
+						
+						String s = "You are about to classify all candidates in the following bounds as " +  type + "\n";
+						
+						for(Entry<String,  Tuple<Double, Double>> entry : currentMinMaxMap.entrySet()) {
+							
+							s += entry.getKey() + " =" + entry.getValue().getXValue() + " to " + entry.getValue().getYValue() + "\n";
+						}
+						
+						alert.setTitle("Are you sure?");
+						alert.setContentText(s);
 
+						Optional<ButtonType> result = alert.showAndWait();
+						
+						if(result != null && result.get() == ButtonType.OK) {
+							
+							classifyCandidates(currentMinMaxMap, type);
+							
+						}
+						
+						
+						pointsMarker.getClassifyBox().setPromptText("CLASSIFY_AS");
+						
+					}
+				});
+			
+			 
+		
+			 
+
+		}
+		
+		private Map<String, Tuple<Double, Double>> getCurrentMinMaxMap() {
+			
+			Axis xAxis = chart.getXAxis();
+			Axis yAxis = chart.getYAxis();
+			
+			Map<String, Tuple<Double, Double>> minMaxMap = new HashMap<String, Tuple<Double,Double>>();
+			
+			minMaxMap.put(xAxis.getName(), new Tuple<Double, Double>(xAxis.getMin(), xAxis.getMax()));
+			minMaxMap.put(yAxis.getName(), new Tuple<Double, Double>(yAxis.getMin(), yAxis.getMax()));
+			
+			return minMaxMap;
+			
 		}
 
 		public void initialiseChart(AxisAttributes xAxisAttributes, AxisAttributes yAxisAttributes) {
