@@ -99,20 +99,31 @@ This should open the application on your primary screen. You can provide command
 You can check `./gradlew run --args="-h"` for a list of available arguments. It should display something like this:
 
 ```
- *************************Candy Jar V2.0-alpha*******************************
+*************************Candy Jar V2.1-alpha*******************************
 usage: CandyJar
  -d,--add_psrcat_db <arg>       Add a psrcat database to get known pulsars
-                                from
+                                from. Currently only takes pulsars with
+                                positions in RA/DEC and in correct hms/dms
+                                format
+ -e,--extend_png                Scale png beyond actual size. This is only
+                                ever useful for large resolution monitors
+                                where you want to resize the PNG to a
+                                higher resolution than original.
  -h,--help                      show this help message
  -l,--list_screens              List available screens
  -n,--num_charts <arg>          Number of charts needed on the secondary
                                 screen (Min:0, max:3)
  -s1,--primary_screen <arg>     Choose primary screen to open the
-                                application in. Use --list_screens to get
-                                a list of screens
+                                application in. The application opens full
+                                screen by default. You can provide an
+                                optional custom resolution if you like, of
+                                the format: <screen—num>:widthxheight. Eg:
+                                1:1920x1080 will open the application
+                                onyour first screen, with the resolution
+                                of 1920x1080
  -s2,--secondary_screen <arg>   Choose secondary screen to open the
-                                application in. Use --list_screens to get
-                                a list of screens
+                                application in. You can provide custom
+                                resolution like for screen 1
 ```
  
 
@@ -120,11 +131,9 @@ Once you run the program, you will find a text field where you can add a candida
 
 At this point, if you already have the output of a partial classification, you can add it using "load classification". Otherwise, ignore that button, and start selecting the UTC of your choice. 
 
-Once you select the UTC, the corresponding beam map will be drawn below along with information on neighbouring pulsars (if any). Now you can filter and sort candidates using the corresponding dropdown menus and click `Go` to start viewing the candidates. Once you hit `Go`, if you have asked for a plotting interface, the corresponding window will appear where you can select the parameters of your choice to plot. On the main window, you can use the buttons for navigation and classification or use the corresponding keys (given in paranthesis). For smaller screens, you can also press the spacebar to open the current PNG file using your default PNG viewer in full resolution. 
+Once you select the UTC, the corresponding beam map will be drawn below along with information on neighbouring pulsars (if any). Now you can filter and sort candidates using the corresponding dropdown menus and click `Go` to start viewing the candidates. Once you hit `Go`, if you have asked for a plotting interface, the corresponding window will appear where you can select the parameters of your choice to plot. On the main window, you can use the buttons for navigation and classification or use the corresponding keys (given in paranthesis). For smaller screens, you can also press the spacebar to open the current PNG file using your default PNG viewer in full resolution. If you choose the CandyCharts to open on the secondary window, hovering over the plot title will bring up the tool bar which will allow you to zoom, pan, and mark candidates. 
 
-On the secondary window, hovering over the plot title will bring up the tool bar which will allow you to zoom, pan, and mark candidates. 
-
-Once the classification is done, you can press the "Save classification" button to write out your classification to a CSV file. 
+Once the classification is done, you can press the "Save classification" button to write out your classification to a CSV file. The application also automatically saves your classification every two minutes in the root candidate directory. In the event where the application crashes, you can resume from where you left off by loading this classification back when the application is restarted.  This file will need to me manually removed after the classification is over. 
 
 
 
