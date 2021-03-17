@@ -28,7 +28,7 @@ public class Psrcat implements PsrcatConstants {
 		
 		try {
 			loadDBs();
-			System.err.println(pulsarMap.size() + " pulsars loaded");
+			System.err.println(pulsarMap.size() + " pulsars loaded from PSRCAT");
 		} catch (IOException e) {
 			e.printStackTrace();
 			throw e;
