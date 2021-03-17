@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -19,6 +18,10 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
@@ -47,6 +50,7 @@ import data_holders.Candidate.CANDIDATE_TYPE;
 import data_holders.MetaFile;
 import data_holders.Pulsar;
 import de.gsi.chart.Chart;
+import exceptions.InvalidInputException;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -108,25 +112,30 @@ import utilitites.Utilities;
 
 public class CandyJar extends Application implements Constants {
 
-	private static Screen primaryScreen = Screen.getPrimary();
-	private static Screen secondaryScreen = Screen.getPrimary();
-	
+//	private static Screen primaryScreen = Screen.getPrimary();
+//	private static Screen secondaryScreen = null;
+
+	private static Rectangle2D primaryScreenBounds = Screen.getPrimary().getBounds();
+	private static Rectangle2D secondaryScreenBounds = null;
+
 	private static Integer numCharts = 2;
 	private static Integer minNumCharts = 0;
 	private static Integer maxNumCharts = 3;
+
+	private static Boolean extendPng = false;
 
 	Psrcat psrcat = new Psrcat();
 
 	/* main pane*/
 	BorderPane mainBorderPane = new BorderPane();
-	
+
 	/*Top Left: Load directory and CSV */
 	File baseDir = null;
 	TextAndButton rootDirTB = new TextAndButton(null,"Results directory","Get pointings", 10);
 	Button fileSelectButton = new Button("...");
 	final Button loadClassification = new Button("Load classification");
-	
-	
+
+
 	/* Top left: Filter and sort candidates */
 	final ComboBox<String> utcBox = new ComboBox<String>();
 	//final ComboBox<String> sortBox = new ComboBox<String>(FXCollections.observableArrayList(Arrays.asList(new String[] { "FOLD_SNR", "FFT_SNR", "PICS_TRAPUM", "PICS_PALFA", "DM", "F0" })));
@@ -134,12 +143,12 @@ public class CandyJar extends Application implements Constants {
 	final CheckComboBox<CANDIDATE_TYPE> filterTypes = new CheckComboBox<CANDIDATE_TYPE>(FXCollections.observableArrayList(Arrays.asList(CANDIDATE_TYPE.values())));
 	final List<CANDIDATE_TYPE> filteredTypes = new ArrayList<CANDIDATE_TYPE>();
 	final Button filterCandidates = new Button("Go");
-	
-	
+
+
 	final HBox candidateFilterHBox = new HBox(10, filterTypes, sortBox, filterCandidates);
 	final VBox controlBox = new VBox(10, new HBox(10, rootDirTB.getTextField(),fileSelectButton,rootDirTB.getButton(), loadClassification),	new HBox(10, utcBox, candidateFilterHBox));
-	
-	
+
+
 	/* Left Middle: Beam Map and tabbed pane */
 	final NumberAxis beamMapXAxis = new NumberAxis();
 	final NumberAxis beamMapYAxis = new NumberAxis();
@@ -151,13 +160,13 @@ public class CandyJar extends Application implements Constants {
 	final Tab candidateTab = new Tab("Candidate Info");
 	final Tab diagnosticTab = new Tab("Diagnostics");
 
-	
+
 	/* Bottom left: message label, controls  and filters*/
 	final Button previous = new Button("Previous (a)");
 	final Button next = new Button("Next (d)");
 	final LabelWithTextAndButton gotoCandidate = new LabelWithTextAndButton("Go to", "", "Go");
 	final Label counterLabel = new Label();
-	
+
 	final ToggleButton rfi = new ToggleButton("RFI (y)");
 	final ToggleButton noise = new ToggleButton("Noise (u)");
 	final ToggleButton tier1 = new ToggleButton("Tier1 (i)");
@@ -165,20 +174,25 @@ public class CandyJar extends Application implements Constants {
 	final ToggleButton knownPulsar = new ToggleButton("Known pulsar (p)");
 	final SegmentedButton candidateCategories = new SegmentedButton(FXCollections.observableArrayList(Arrays.asList(new ToggleButton[] {rfi, noise, tier1, tier2, knownPulsar})));
 	final Label message = new Label("All ok. Select a directory");
-	
+
 	final Button saveClassification = new Button("Save classification");
-	
-	
+
+
 	final VBox actionsBox = new VBox(10, new HBox(10, previous, counterLabel, next, gotoCandidate.getTextField(), gotoCandidate.getButton(), saveClassification),
 			new HBox(10, new Label("Select Category:"), candidateCategories));
-	
+
 	/*Right: imageView */
 	final ImageView imageView = new ImageView();
 	final HBox imageViewHBox = new HBox(10);
 
+	/* task schedule for saving temporary file */ 
+
+	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+
 
 	/* variables for data manipulation */
-	
+
 	MetaFile metaFile = null;
 	final List<Candidate> fullCandiatesList = new ArrayList<Candidate>();
 	final Map<String, List<Candidate>> candidateMap = new HashMap<String, List<Candidate>>();
@@ -186,7 +200,11 @@ public class CandyJar extends Application implements Constants {
 	final Set<LocalDateTime> utcs = new TreeSet<LocalDateTime>();
 	final List<Pulsar> pulsarsInBeam = new ArrayList<Pulsar>();
 
+	Candidate currentCandidate = null;
+
 	Integer imageCounter = 0;
+
+	Integer numImageGulp=10;
 
 
 
@@ -199,29 +217,29 @@ public class CandyJar extends Application implements Constants {
 
 	String userName = System.getProperty("user.name");
 
-	Integer pngHeight = Constants.DEFAULT_IMAGE_HEIGHT;
-	Integer pngWidth = Constants.DEFAULT_IMAGE_WIDTH;
-	
+	Integer pngPaneHeight = Constants.DEFAULT_IMAGE_HEIGHT;
+	Integer pngPaneWidth = Constants.DEFAULT_IMAGE_WIDTH;
+
 
 	Boolean goingForward = Boolean.valueOf(Boolean.TRUE);
-	
+
 	Boolean candidatesVisible=false;
-	
-	
+
+
 	/* second screen */
-	
+
 	ChartViewer chartViewer = null;
-	
+
 	public void initialise() {
 		filterTypes.setTitle("FILTER_TYPE");
-        utcBox.setPromptText("SELECT_UTC");
+		utcBox.setPromptText("SELECT_UTC");
 		sortBox.setPromptText("SORT_BY");
-		
+
 		filterTypes.setTooltip(new Tooltip("Select the types of candidates to filter"));
 		utcBox.setTooltip(new Tooltip("Select UTC to view candidates"));
 		sortBox.setTooltip(new Tooltip("Select value to sort by"));
-		
-		
+
+
 		beamMapChart.setCursor(Cursor.CROSSHAIR);
 		beamMapChart.setAlternativeRowFillVisible(true);
 		beamMapChart.setAnimated(false);
@@ -230,8 +248,8 @@ public class CandyJar extends Application implements Constants {
 		beamMapChart.setLegendVisible(false);
 		beamMapChart.setAnimated(false);
 		beamMapChart.setVerticalZeroLineVisible(false);
-		
-		
+
+
 		beamMapXAxis.setAutoRanging(false);
 		beamMapYAxis.setAutoRanging(false);
 
@@ -241,45 +259,61 @@ public class CandyJar extends Application implements Constants {
 		beamMapXAxis.setAnimated(false);
 		beamMapYAxis.setAnimated(false);
 
-		beamMapXAxis.setTickLabelFormatter(AppUtils.raStringConverter);
+		//beamMapXAxis.setTickLabelFormatter(AppUtils.raStringConverter);
 
-		beamMapYAxis.setTickLabelFormatter(AppUtils.decStringConverter);
-		
+		//beamMapYAxis.setTickLabelFormatter(AppUtils.decStringConverter);
+
 		filterTypes.getCheckModel().getCheckedItems().addListener(new ListChangeListener<CANDIDATE_TYPE>() {
-	         public void onChanged(ListChangeListener.Change<? extends CANDIDATE_TYPE> c) {
-	        	 filteredTypes.clear();
-	             filteredTypes.addAll(filterTypes.getCheckModel().getCheckedItems());
-	             filterTypes.setTitle("FILTER_TYPE");
-	         }
-	     });
-		
+			public void onChanged(ListChangeListener.Change<? extends CANDIDATE_TYPE> c) {
+				filteredTypes.clear();
+				filteredTypes.addAll(filterTypes.getCheckModel().getCheckedItems());
+				filterTypes.setTitle("FILTER_TYPE");
+			}
+		});
+
 		//candidateCategories.getButtons().addAll(rfi, noise, tier1, tier2, knownPulsar);
 		candidateCategories.getStyleClass().add(SegmentedButton.STYLE_CLASS_DARK);
-		
+
 		loadClassification.setVisible(false);
 		utcBox.setVisible(false);
 		beamMapChart.setVisible(false);
 		candidateFilterHBox.setVisible(false);
 		sortBox.setVisible(false);
 		actionsBox.setVisible(false);
-		
+
 		gotoCandidate.getTextField().setPromptText("Go to Candidate");
 
 
 		message.setTextFill(Paint.valueOf("darkred"));
 
-		chartViewer = new ChartViewer(secondaryScreen, numCharts);
+		chartViewer = secondaryScreenBounds!=null? new ChartViewer(secondaryScreenBounds, numCharts, this): null;
 	}
-	
+
 
 	@Override
 	public void start(Stage stage) throws Exception {
-		
+
 
 		configureLayout();
 		initialise();
-		
-        
+
+		scheduler.scheduleAtFixedRate(new Runnable() {
+
+			@Override
+			public void run() {
+				
+				if(rootDirTB == null || rootDirTB.getTextField().getText().isBlank() || baseDir == null || userName == null || fullCandiatesList.isEmpty()) {
+					return;
+				}
+				System.err.println("Autosaving to " + baseDir.getName() + "_" + userName+"_autosave.csv");
+
+				writeToFile(new File(rootDirTB.getTextField().getText(), baseDir.getName() + "_" + userName+"_autosave.csv"));
+
+				
+			}
+		}, 2, 2, TimeUnit.MINUTES);
+
+
 		filterTypes.getCheckModel().check(filterTypes.getCheckModel().getItemIndex(CANDIDATE_TYPE.UNCAT));
 
 
@@ -295,7 +329,7 @@ public class CandyJar extends Application implements Constants {
 
 			@Override
 			public void handle(ActionEvent event) {
-				
+
 				if(rootDirTB.getTextField().getText().isBlank()) {
 					message.setText("Select a valid directory");
 					return;
@@ -303,10 +337,10 @@ public class CandyJar extends Application implements Constants {
 
 				System.err.println("Loading new root directory" + rootDirTB.getTextField().getText());
 				baseDir = new File(rootDirTB.getTextField().getText());
-				
+
 				String csv = baseDir.getAbsolutePath() + File.separator + Constants.CSV_FILE_NAME;
-				
-				
+
+
 				beamMapChart.getData().clear();
 				utcs.clear();
 				imageCounter = 0;
@@ -315,19 +349,19 @@ public class CandyJar extends Application implements Constants {
 
 				try {
 					fullCandiatesList.addAll(CandidateFileReader.readCandidateFile(csv));
-					
+
 					utcs.addAll(fullCandiatesList.stream().map(f -> f.getStartUTC()).collect(Collectors.toSet()));
 
 					utcBox.getItems().clear();
 					utcBox.setItems(FXCollections.observableArrayList(utcs.stream()
 							.map(f -> Utilities.getUTCString(f, commonUTCFormat)).collect(Collectors.toList())));
-					
+
 					for(LocalDateTime utc: utcs) { 
 						String utcString = Utilities.getUTCString(utc, DateTimeFormatter.ISO_DATE_TIME);
 						List<Candidate> candidatesPerUtc = fullCandiatesList.stream().filter(f -> f.getStartUTC().equals(utc)).collect(Collectors.toList());
 						candidateMap.put(utcString, candidatesPerUtc);
 						checkSimilarity(candidatesPerUtc);
-						
+
 					}
 
 					message.setText(utcs.size() + " utcs found");
@@ -353,6 +387,7 @@ public class CandyJar extends Application implements Constants {
 			@Override
 			public void handle(ActionEvent event) {
 				// images.clear();
+				candidates.stream().forEach(f-> f.setImage(null));
 				candidates.clear();
 				imageCounter = 0;
 
@@ -366,9 +401,9 @@ public class CandyJar extends Application implements Constants {
 				String utcString = utcBox.getValue();
 				if (utcString == null)
 					return;
-				
+
 				System.err.println("UTC:" + utcString);
-				
+
 				LocalDateTime utc = Utilities.getUTCLocalDateTime(utcString, Constants.commonUTCFormat);
 
 				/* stupid stub because you need atleast one candidate to get the meta file */
@@ -455,7 +490,7 @@ public class CandyJar extends Application implements Constants {
 
 					message.setText(candidates.size() + " candidate PNGs found.");
 					consolidate(imageCounter);
-					
+
 					candidatesVisible = true;
 				} else {
 					message.setText("No candidate PNGs for your filter type / UTC");
@@ -584,7 +619,7 @@ public class CandyJar extends Application implements Constants {
 				File saveFile = saveFileChooser.showSaveDialog(stage);
 
 				Optional<ButtonType> result = null;
-				
+
 				if(saveFile == null ) {
 					message.setText("Aborting saving classification.");
 					return;
@@ -615,8 +650,8 @@ public class CandyJar extends Application implements Constants {
 
 			}
 		});
-		
-		
+
+
 		loadClassification.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
@@ -628,11 +663,11 @@ public class CandyJar extends Application implements Constants {
 				loadFileChooser.setInitialFileName(baseDir.getName() + "_" + userName);
 				File loadFile = loadFileChooser.showOpenDialog(stage);
 
-				
+
 				if(loadFile == null) {
 					message.setText("Aborted loading existing classification.");
 				}
-				
+
 				else if(!loadFile.exists()) {
 					message.setText("File does not exist");
 				}
@@ -640,7 +675,7 @@ public class CandyJar extends Application implements Constants {
 					loadFromFile(loadFile);
 				}
 
-				
+
 			}
 		});
 
@@ -659,20 +694,22 @@ public class CandyJar extends Application implements Constants {
 		mainBorderPane.setOnMouseClicked(f -> {
 			mainBorderPane.requestFocus();
 		});
-		
+
 		Platform.runLater(() -> mainBorderPane.requestFocus());
 
-		Scene scene = new Scene(mainBorderPane, primaryScreen.getBounds().getWidth(), primaryScreen.getBounds().getHeight());
-		
-		stage.setX(primaryScreen.getBounds().getMinX());
-		stage.setY(primaryScreen.getBounds().getMinY());
-		
+		Scene scene = new Scene(mainBorderPane, primaryScreenBounds.getWidth(), primaryScreenBounds.getHeight());
+
+		stage.setX(primaryScreenBounds.getMinX());
+		stage.setY(primaryScreenBounds.getMinY());
+
 		stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
 
 			@Override
 			public void handle(WindowEvent event) {
+				scheduler.shutdown();
 				Platform.exit();
-				
+
+
 			}
 		});
 
@@ -682,16 +719,16 @@ public class CandyJar extends Application implements Constants {
 
 		stage.setTitle("CandyJar");
 		stage.setScene(scene);
-		stage.setResizable(false);
+		//stage.setResizable(false);
 		stage.show();
 
-//		stage.xProperty().addListener((obs, oldVal, newVal) -> {
-//			System.out.println("X: " + newVal);
-//
-//		});
-//		stage.yProperty().addListener((obs, oldVal, newVal) -> {
-//			System.out.println("Y: " + newVal);
-//		});
+		//		stage.xProperty().addListener((obs, oldVal, newVal) -> {
+		//			System.out.println("X: " + newVal);
+		//
+		//		});
+		//		stage.yProperty().addListener((obs, oldVal, newVal) -> {
+		//			System.out.println("Y: " + newVal);
+		//		});
 
 		if (baseDir != null && baseDir.exists()) {
 			rootDirTB.getTextField().setText(baseDir.getAbsolutePath());
@@ -718,7 +755,7 @@ public class CandyJar extends Application implements Constants {
 	}
 
 	public void addDefaultMap(MetaFile metaFile, List<Pulsar> pulsars) {
-		
+
 		beamMapChart.getData().clear();
 
 		XYChart.Series<Number, Number> beamPositions = new XYChart.Series<Number, Number>();
@@ -748,7 +785,7 @@ public class CandyJar extends Application implements Constants {
 
 	}
 
-	
+
 	public void updateTab(Tab tab, Candidate candidate) {
 		tab.setText("Candidate Info");
 
@@ -763,23 +800,23 @@ public class CandyJar extends Application implements Constants {
 						.map(f -> f.getIntegerBeamName()).collect(Collectors.toList()));
 			else
 				message.setText("Cannot find beam: " + candidate.getBeamName());
-			
-//			table.getItems().add(new Pair<String, Object>("similar candidates:", candidate.getSimilarParamCandidates().stream()
-//					.map(f ->{
-//						return f.getBeamName() + " " + f.getPngFilePath();	
-//					}).collect(Collectors.toList()).toString()));
+
+			//			table.getItems().add(new Pair<String, Object>("similar candidates:", candidate.getSimilarParamCandidates().stream()
+			//					.map(f ->{
+			//						return f.getBeamName() + " " + f.getPngFilePath();	
+			//					}).collect(Collectors.toList()).toString()));
 
 			table.getItems().add(new Pair<String, Object>("Pointing ID:", candidate.getPointingID()));
 			table.getItems().add(new Pair<String, Object>("Beam ID:", candidate.getBeamID()));
 			table.getItems().add(new Pair<String, Object>("Beam Name:", candidate.getBeamName()));
 			table.getItems().add(new Pair<String, Object>("Neighbour beams:", neighbours.toString()));
 			table.getItems()
-					.add(new Pair<String, Object>("PICS score (TRAPUM):", candidate.getPicsScoreTrapum().toString()));
+			.add(new Pair<String, Object>("PICS score (TRAPUM):", candidate.getPicsScoreTrapum().toString()));
 			table.getItems()
-					.add(new Pair<String, Object>("PICS score (PALFA):", candidate.getPicsScorePALFA().toString()));
+			.add(new Pair<String, Object>("PICS score (PALFA):", candidate.getPicsScorePALFA().toString()));
 			table.getItems().add(new Pair<String, Object>("FFT SNR:", candidate.getFftSNR().toString()));
 			table.getItems().add(new Pair<String, Object>("Fold SNR: ", candidate.getFoldSNR().toString()));
-			
+
 			table.getItems().add(new Pair<String, Object>("Boresight:", candidate.getSourceName()));
 			table.getItems().add(new Pair<String, Object>("RA:", candidate.getRa().toHHMMSS()));
 			table.getItems().add(new Pair<String, Object>("DEC:", candidate.getDec().toDDMMSS()));
@@ -804,14 +841,14 @@ public class CandyJar extends Application implements Constants {
 			table.getItems().add(new Pair<String, Object>("Epoch of F0:", candidate.getPeopoch().toString()));
 			table.getItems().add(new Pair<String, Object>("Max DM (YMW16):", candidate.getMaxDMYMW16().toString()));
 			table.getItems()
-					.add(new Pair<String, Object>("Max Distance (YMW16):", candidate.getDistYMW16().toString()));
+			.add(new Pair<String, Object>("Max Distance (YMW16):", candidate.getDistYMW16().toString()));
 
 			table.getItems().add(new Pair<String, Object>("PNG path:", candidate.getPngFilePath()));
 			table.getItems().add(new Pair<String, Object>("Metafile path:", candidate.getMetaFilePath()));
 			table.getItems().add(new Pair<String, Object>("Filterbank path:", candidate.getFilterbankPath()));
 			table.getItems().add(new Pair<String, Object>("Tarball path:", candidate.getTarballPath()));
-			
-			
+
+
 		} else {
 			table.getItems().add(new Pair<String, Object>("Candidate information will be displayed here", ""));
 		}
@@ -841,28 +878,28 @@ public class CandyJar extends Application implements Constants {
 	public void progress() {
 		candidateCategories.requestLayout();
 		next.fire();
-//		if (goingForward || imageCounter == 0)
-//			next.fire();
-//		else
-//			previous.fire();
+		//		if (goingForward || imageCounter == 0)
+		//			next.fire();
+		//		else
+		//			previous.fire();
 	}
-	
+
 	public void updateDiagnosticTab(TabPane tabPane, Candidate candidate) {
 		final TableView<Pair<String, Object>> table = new TableView<>();
-		
+
 
 		if(pulsarsInBeam != null && !pulsarsInBeam.isEmpty()) {
-			
+
 			for (Pulsar pulsar : pulsarsInBeam) {
 				table.getItems().add(new Pair<String, Object>(pulsar.getName() , KnownPulsarGuesser.guessPulsar(candidate, pulsar)));
-				
+
 			}
-			
+
 		}else {
 			table.getItems().add(new Pair<String, Object>("Diagnostic information will be displayed here", ""));
 		}
-		
-		
+
+
 		TableColumn<Pair<String, Object>, String> nameColumn = new TableColumn<>("Item");
 		TableColumn<Pair<String, Object>, Object> valueColumn = new TableColumn<>("Description");
 		valueColumn.setSortable(false);
@@ -883,7 +920,7 @@ public class CandyJar extends Application implements Constants {
 
 		diagnosticTab.setContent(table);
 
-		
+
 	}
 
 	public void populatePulsarTabs(TabPane tabPane) {
@@ -937,7 +974,7 @@ public class CandyJar extends Application implements Constants {
 	}
 
 	class PairKeyFactory
-			implements Callback<TableColumn.CellDataFeatures<Pair<String, Object>, String>, ObservableValue<String>> {
+	implements Callback<TableColumn.CellDataFeatures<Pair<String, Object>, String>, ObservableValue<String>> {
 		@Override
 		public ObservableValue<String> call(TableColumn.CellDataFeatures<Pair<String, Object>, String> data) {
 			return new ReadOnlyObjectWrapper<>(data.getValue().getKey());
@@ -945,7 +982,7 @@ public class CandyJar extends Application implements Constants {
 	}
 
 	class PairValueFactory
-			implements Callback<TableColumn.CellDataFeatures<Pair<String, Object>, Object>, ObservableValue<Object>> {
+	implements Callback<TableColumn.CellDataFeatures<Pair<String, Object>, Object>, ObservableValue<Object>> {
 		@SuppressWarnings("unchecked")
 		@Override
 		public ObservableValue<Object> call(TableColumn.CellDataFeatures<Pair<String, Object>, Object> data) {
@@ -1048,49 +1085,74 @@ public class CandyJar extends Application implements Constants {
 		candidates.clear();
 		message.setText("Loading...");
 		if(sortBox.getValue() ==null) sortBox.setValue(Candidate.DEFAULT_SORT_PARAMETER);
-		candidates.addAll(fullCandiatesList.stream()
-				.filter(f -> f.getStartUTC().equals(utc) && types.contains(f.getCandidateType()))
+
+		List<Candidate> candidatesForUTC = fullCandiatesList.stream().filter(f-> f.getStartUTC().equals(utc)).collect(Collectors.toList());
+
+		candidates.addAll(candidatesForUTC.stream()
+				.filter(f -> f.getStartUTC().equals(utc) && types.contains(f.getCandidateType()) && f.isVisible())
 				.sorted(Comparator.comparing(f -> Candidate.SORTABLE_PARAMETERS_MAP.get(sortBox.getValue())
-																					.apply((Candidate) f))
-								.reversed())
+						.apply((Candidate) f))
+						.reversed())
 				.collect(Collectors.toList()));
 
+
+
+		if(chartViewer != null) {
+			chartViewer.clearMap();
+			chartViewer.addToMap(CANDIDATE_PLOT_CATEGORY.ALL, candidatesForUTC);
+			chartViewer.getAllCandidates().addAll(candidatesForUTC);
+		}
+
+
+
+
+	}
+
+	public void organiseImages(Integer count) {
+
+		AtomicInteger runCount = new AtomicInteger(0);
+
 		candidates.stream().forEach(f -> {
-			if (f.getImage() == null) {
-				File pngFile = new File(baseDir.getAbsolutePath() + File.separator + f.getPngFilePath());
-				try {
-					BufferedImage image = ImageIO.read(pngFile);
+			int index = runCount.getAndIncrement();
+			if( Math.abs(count - index) <= numImageGulp) {
+				if (f.getImage() == null) {
+					File pngFile = new File(baseDir.getAbsolutePath() + File.separator + f.getPngFilePath());
+					try {
+						BufferedImage image = ImageIO.read(pngFile);
 
-					if (image.getWidth() != pngWidth
-							|| image.getHeight() != pngHeight) {
+						if( (image.getWidth() == pngPaneWidth && image.getHeight() == pngPaneHeight) ||   
+								(image.getWidth() < pngPaneWidth && image.getHeight() < pngPaneHeight && !CandyJar.extendPng) ) {
 
-						ResampleOp resizeOp = new ResampleOp(pngWidth,
-								pngHeight);
-						BufferedImage scaledImage = resizeOp.filter(image, null);
-						f.setImage(SwingFXUtils.toFXImage(scaledImage, null));
-						
+							f.setImage(new Image(pngFile.toURI().toString()));
+
+						}
+
+						else {
+							ResampleOp resizeOp = new ResampleOp(pngPaneWidth,
+									pngPaneHeight);
+							BufferedImage scaledImage = resizeOp.filter(image, null);
+							f.setImage(SwingFXUtils.toFXImage(scaledImage, null));
+						}
+
+					} catch (IOException e) {
+						message.setText(e.getMessage());
+						e.printStackTrace();
+
 					}
-
-					else {
-						f.setImage(new Image(pngFile.getAbsolutePath()));
-					}
-
-				} catch (IOException e) {
-					message.setText(e.getMessage());
-					e.printStackTrace();
 
 				}
-
 			}
+			else {
+				f.setImage(null);
+			}
+
 		});
-		
-		chartViewer.clearMap();
-		chartViewer.addToMap(CANDIDATE_PLOT_CATEGORY.ALL, candidates);
-		chartViewer.getAllCandidates().addAll(candidates);
- 
+
+
 	}
 
 	public void consolidate(Integer count) {
+
 
 		tier1.setSelected(false);
 		tier2.setSelected(false);
@@ -1098,7 +1160,12 @@ public class CandyJar extends Application implements Constants {
 		knownPulsar.setSelected(false);
 		noise.setSelected(false);
 
+		organiseImages(count);
+
+
 		Candidate candidate = candidates.get(count);
+
+
 		imageView.setImage(candidate.getImage());
 		imageView.setUserData(candidate);
 		updateTab(candidateTab, candidate);
@@ -1145,53 +1212,70 @@ public class CandyJar extends Application implements Constants {
 		}
 
 		infoPane.requestLayout();
-		
-		chartViewer.addToMap(CANDIDATE_PLOT_CATEGORY.CURRENTLY_VIEWING, Arrays.asList(candidate));
+
+		if(chartViewer!=null) chartViewer.addToMap(CANDIDATE_PLOT_CATEGORY.CURRENTLY_VIEWING, Arrays.asList(candidate));
 	}
 
-	
+
 
 	public void configureLayout() {
-		
-		
-		Rectangle2D bounds  = primaryScreen.getVisualBounds();
-		
+
+
+		Rectangle2D bounds  = primaryScreenBounds;
+
 		Insets insets = Constants.DEFAULT_INSETS;
 
 		double width = bounds.getWidth();
 		double height = bounds.getHeight();
-		
-		double min = width > height? height : width;
-		
-		if(min > 2 * Constants.DEFAULT_IMAGE_HEIGHT) {
-			pngHeight = pngWidth = Constants.DEFAULT_IMAGE_HEIGHT;
-		}
-		else {
-			pngHeight = (int) (height - 50 - insets.getTop() -insets.getBottom()); // 50 pizels for clarity 
-			pngWidth = (int) (height - 50 - insets.getLeft() -insets.getRight()); // use height to maintain aspect ratio
-		}
-		double remainingWidth = width - insets.getLeft() -insets.getRight() - pngWidth;
-		
-		
+
+		double min = width > height? width:height;
+
+		int widthBy2 = (int)(width - 20 - insets.getLeft() -insets.getRight())/2;// 20 pixels for clarity 
+
+		System.err.println("initial bounds height:" + height + " width:" + width);
+
+
+		pngPaneWidth = widthBy2;
+		pngPaneHeight = (int) (height - 20 - insets.getTop() -insets.getBottom());
+
+		System.err.println("initial png height:" + pngPaneHeight + " width:" + pngPaneWidth);
+
+
+		pngPaneWidth = pngPaneHeight > pngPaneWidth? pngPaneWidth : pngPaneHeight; //choose the smaller of the two
+		pngPaneHeight = pngPaneWidth;
+
+		System.err.println("final png height:" + pngPaneHeight + " width:" + pngPaneWidth);
+
+		//		if(min > 2 * Constants.DEFAULT_IMAGE_HEIGHT) {
+		//			pngPaneHeight = pngPaneWidth = Constants.DEFAULT_IMAGE_HEIGHT;
+		//		}
+		//		else {
+		//			pngPaneHeight = (int) (height - 20 - insets.getTop() -insets.getBottom()); // 2d0 pizels for clarity 
+		//			pngPaneWidth = (int) (height - 20 - insets.getLeft() -insets.getRight()); // use height to maintain aspect ratio
+		//		}
+		//		double remainingWidth = width - insets.getLeft() -insets.getRight() - pngPaneWidth;
+
+		double remainingWidth = pngPaneWidth;
+
 		BorderPane leftPane = new BorderPane();
-		
+
 		double leftTopHeight = 80;
 
 		VBox leftTop = new VBox(10, controlBox);
 		leftTop.setPrefSize(remainingWidth, leftTopHeight);
 		leftTop.setAlignment(Pos.CENTER);
 		leftPane.setTop(leftTop);
-		
-		
+
+
 		double leftBottomHeight = 30;
 
 
 		VBox leftBottom = new VBox(10, message);
 		leftBottom.setPrefSize(remainingWidth, leftBottomHeight);
 		leftPane.setBottom(leftBottom);
-		
-		double leftCentreHeight = pngHeight - leftBottomHeight - leftTopHeight;
-		
+
+		double leftCentreHeight = pngPaneHeight - leftBottomHeight - leftTopHeight;
+
 		beamMapChart.setMinHeight(0.5*leftCentreHeight);
 
 		VBox centerLeft = new VBox(10, beamMapChart, infoPane, actionsBox);
@@ -1203,29 +1287,33 @@ public class CandyJar extends Application implements Constants {
 		mainBorderPane.setLeft(leftPane);
 
 		imageViewHBox.getChildren().add(imageView);
-		imageViewHBox.setPrefSize(pngWidth, pngHeight);
+		imageViewHBox.setPrefSize(pngPaneWidth, pngPaneHeight);
 
 		VBox rightPane = new VBox(10, imageViewHBox);
-		rightPane.setPrefSize(pngWidth, pngHeight);
+		rightPane.setPrefSize(pngPaneWidth, pngPaneHeight);
 
 		mainBorderPane.setRight(rightPane);
-		
+
 		BorderPane.setMargin(leftTop, insets);
 		BorderPane.setMargin(centerLeft, insets );
 		BorderPane.setMargin(imageViewHBox, insets);
 		BorderPane.setMargin(message, insets);
 	}
 
-	
-	
+
+
 	public void writeToFile(File saveFile) {
+		
+		if(fullCandiatesList.isEmpty()) {
+			System.err.println("No candidates to write, ignoring this write call.");
+		}
 
 
 		List<String> list = new ArrayList<String>();
 		list.add("utc,png,classification");
 		for (Candidate candidate : fullCandiatesList)
 			list.add(candidate.getUtcString() + Constants.CSV_SEPARATOR + candidate.getPngFilePath()
-					+ Constants.CSV_SEPARATOR + candidate.getCandidateType());
+			+ Constants.CSV_SEPARATOR + candidate.getCandidateType());
 
 		try {
 			FileUtils.writeLines(saveFile, list);
@@ -1236,13 +1324,13 @@ public class CandyJar extends Application implements Constants {
 
 	}
 	public void loadFromFile(File loadFile) {
-		
+
 		try {
 			List<String> list = Files.readAllLines(loadFile.toPath());
 			for (Candidate candidate : fullCandiatesList) {
-				
+
 				List<String> lines  = list.stream().filter(f -> f.contains(candidate.getPngFilePath())).collect(Collectors.toList());
-				
+
 				if(lines.isEmpty()) {
 					message.setText("Problem loading classification, see console for more details");
 					System.err.println("Cannot find category for " + candidate.getPngFilePath());
@@ -1252,7 +1340,7 @@ public class CandyJar extends Application implements Constants {
 					System.err.println( lines.size() + " values for " + candidate.getPngFilePath());
 				}
 				else {
-					
+
 					String[] chunks = lines.get(0).split(",");
 					if (chunks.length != 3) {
 						message.setText("Loaded classification contains invalid format, see console for more details");
@@ -1260,142 +1348,153 @@ public class CandyJar extends Application implements Constants {
 
 					}
 					candidate.setCandidateType(CANDIDATE_TYPE.valueOf(chunks[2]));
-					
+
 				}
-				
-				
-				
+
+
+
 			}
-			
+
 		} catch (IOException e) {
 			message.setText(e.getMessage());
 			e.printStackTrace();
 		}
-		
 
-		
+
+
 	}
-	
-	
+
+
 	public void checkSimilarity(List<Candidate> candidates) {
-		
+
 		for(Candidate c1: candidates) {
-			
+
 			for(Candidate c2: candidates) {
-				
-				
+
+
 				if (c1.isSimilarTo(c2)) { 
 					if(!c1.equals(c2)) c1.getSimilarParamCandidates().add(c2);
 				}
-				
-				
+
+
 			}
-			
+
 		}
-		
+
 	}
-	
-	
-	
+
+
+
 	static CommandLineParser parser = new DefaultParser();
 	static Options options = new Options();
 	static CommandLine commandLine;
-    private static final Logger LOGGER = LoggerFactory.getLogger(Chart.class);
-    
-    
+	private static final Logger LOGGER = LoggerFactory.getLogger(Chart.class);
 
-	
+
+
+
 	public static void main(String[] args) throws IOException {
-		
+
 		LOGGER.atDebug().addArgument("test");
-	
-		System.err.println("*************************Candy Jar V2.0-alpha*******************************");
-		
+
+		System.err.println("*************************Candy Jar V2.1-alpha*******************************");
+
 		if(System.getenv("PSRCAT_DIR") != null) {
 			PsrcatConstants.psrcatDBs.add(System.getenv("PSRCAT_DIR") + File.separator + "psrcat.db");
-			
+
 		}
-		
-		
+
+
 		Locale.setDefault(Locale.US);
 
-		Option selectPrimaryScreen  = new Option("s1","primary_screen", true, "Choose primary screen to open the application in. Use --list_screens to get a list of screens");
-		Option selectSecondaryScreen  = new Option("s2","secondary_screen", true, "Choose secondary screen to open the application in. Use --list_screens to get a list of screens");
+		Option selectPrimaryScreen  = new Option("s1","primary_screen", true, "Choose primary screen to open the application in. "
+				+ "The application opens full screen by default. You can provide an optional custom resolution if you like, of the format: <screen—num>:widthxheight. Eg: 1:1920x1080 will open the application on"
+				+ "your first screen, with the resolution of 1920x1080");
+		Option selectSecondaryScreen  = new Option("s2","secondary_screen", true, "Choose secondary screen to open the application in. "
+				+ "You can provide custom resolution like for screen 1");
 		Option numCharts = new Option("n","num_charts", true, "Number of charts needed on the secondary screen (Min:"+ minNumCharts+", max:"+ maxNumCharts+")");
 		Option help = new Option("h","help",false, "show this help message");
 		Option listScreens = new Option("l","list_screens",false, "List available screens");
-		
-		Option addPsrcatDB = new Option("d","add_psrcat_db",true, "Add a psrcat database to get known pulsars from");
-		
+
+		Option addPsrcatDB = new Option("d","add_psrcat_db",true, "Add a psrcat database to get known pulsars from. Currently only takes pulsars with positions in RA/DEC and in correct hms/dms format");
+
+		Option extendPng = new Option("e", "extend_png", false, "Scale png beyond actual size. "
+				+ "This is only ever useful for large resolution monitors where you want to resize the PNG to a higher resolution than original."); 
+
 		options.addOption(selectPrimaryScreen);
 		options.addOption(selectSecondaryScreen);
 		options.addOption(help);
 		options.addOption(listScreens);
 		options.addOption(addPsrcatDB);
 		options.addOption(numCharts);
+		options.addOption(extendPng);
 
 		try{
-			
+
 			commandLine = parser.parse(options, args);
 
 			if(hasOption(help)){
 				help();
 				System.exit(0);
 			}
-			
+
 			if(hasOption(numCharts)){
 				Integer value = Integer.parseInt(getValue(numCharts));
 				if(value < minNumCharts || value > maxNumCharts) {
 					System.err.println("Enter valid number of charts.");
 					System.exit(0);
 				}
-				
+
 				CandyJar.numCharts = value;
+				
+				System.err.println("Displaying " + value + " Candy Charts");
 			}
-			
+
 			if(hasOption(listScreens)) {
 				int n=0;
 				for(Screen screen: Screen.getScreens()) {
 					Rectangle2D rec = screen.getBounds();
 					System.err.println("Screen #"+ ++n + ": " + rec.getWidth() + "x" + rec.getHeight());
-					
+
 				}
 				System.exit(0);
 			}
-			if(hasOption(selectPrimaryScreen)) {
-				Integer value = Integer.parseInt(getValue(selectPrimaryScreen));
+
+
+			if(hasOption(extendPng)) {
+
+				CandyJar.extendPng = true;
 				
-				if(value < 0 || value > Screen.getScreens().size()) {
-					
-					System.err.println("Enter valid screen number.");
-					System.exit(0);
-					
-				}
-				
-				primaryScreen = Screen.getScreens().get(value-1);
-				
-				
+				System.err.println("Okay, performing lossless PNG scaling even if pane size > png size");
+
+
 			}
-			
+
+			if(hasOption(selectPrimaryScreen)) {
+
+
+				String stringValue = getValue(selectPrimaryScreen);
+				CandyJar.primaryScreenBounds = parseScreenInput(stringValue);
+				
+				System.err.println("Okay, Using primary screen bounds:" + CandyJar.primaryScreenBounds);
+
+
+			}
+
 			if(hasOption(selectSecondaryScreen)) {
-				Integer value = Integer.parseInt(getValue(selectSecondaryScreen));
+
+				String stringValue = getValue(selectSecondaryScreen);
+				CandyJar.secondaryScreenBounds = parseScreenInput(stringValue);
 				
-				if(value < 0 || value > Screen.getScreens().size()) {
-					
-					System.err.println("Enter valid screen number.");
-					System.exit(0);
-					
-				}
+				System.err.println("Okay, Using secondary screen bounds:" + CandyJar.secondaryScreenBounds);
 				
-				secondaryScreen = Screen.getScreens().get(value-1);
-				
-				
+
 			}
 			else {
-				secondaryScreen = primaryScreen;
+				secondaryScreenBounds = null;
 			}
-			
-			
+
+
 			if(hasOption(addPsrcatDB)) {
 				String value = getValue(addPsrcatDB);
 				PsrcatConstants.psrcatDBs.add(value);
@@ -1405,29 +1504,98 @@ public class CandyJar extends Application implements Constants {
 			help();
 			System.exit(0);
 		}
-		
-		
+
+
 
 		Application.launch(CandyJar.class);
 
 	}
-	
+
 	public static boolean hasOption(Option option){
 		return commandLine.hasOption(option.getOpt());
 	}
-	
+
 	public static String getValue(Option option){
 		return commandLine.getOptionValue(option.getOpt());
 	}
-	
-	
+
+
 	public static void help(){
 		HelpFormatter formater = new HelpFormatter();
 		formater.printHelp("CandyJar", options);
 	}
 
-	
-	
+
+
+	public static Rectangle2D parseScreenInput(String strValue) throws InvalidInputException{
+
+
+		Integer screenNum = null;
+		Integer width = null;
+		Integer height = null;
+		try {
+
+			if(strValue.contains(":")) {
+
+
+				String[] chunks = strValue.split(":");
+
+				screenNum = Integer.parseInt(chunks[0]);
+
+				String[] wh = chunks[1].split("x");
+
+				width = Integer.parseInt(wh[0]);
+				height = Integer.parseInt(wh[1]);
+
+			}
+
+			else {
+				screenNum = Integer.parseInt(strValue);
+			}
+
+
+
+			if(screenNum < 0 || screenNum > Screen.getScreens().size()) {
+
+				System.err.println("Enter valid screen number.");
+				System.exit(0);
+
+			}
+
+			Screen screen = Screen.getScreens().get(screenNum-1);
+
+			Rectangle2D screenBounds = screen.getBounds();
+
+			Rectangle2D rectangle2d = null;
+
+			if(width ==null) width = (int) screenBounds.getWidth();
+			if(height ==null) height = (int) screenBounds.getHeight();
+
+
+			rectangle2d = new Rectangle2D(screenBounds.getMinX(), screenBounds.getMinY(), width, height);
+
+			System.err.println(rectangle2d + " " + screen.getBounds().getWidth() + " " + screen.getBounds().getHeight());
+
+			return rectangle2d;
+
+
+		} catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+			throw new InvalidInputException("Invalid screen value format: " + strValue + ". check help for syntax.");
+		}
+
+
+	}
+
+
+
+
+
+
+
+
+
+
+
 	/* Code for chart zooming */
 
 	Rectangle rect;
@@ -1444,7 +1612,7 @@ public class CandyJar extends Application implements Constants {
 			Bounds chartSceneBounds = beamMapChart.localToScene(beamMapChart.getBoundsInLocal());
 
 			if (mouseEvent.getButton() == MouseButton.SECONDARY) {
-				
+
 				((NumberAxis) beamMapChart.getXAxis()).setLowerBound(initXLowerBound);
 				((NumberAxis) beamMapChart.getXAxis()).setUpperBound(initXUpperBound);
 				((NumberAxis) beamMapChart.getXAxis()).setTickUnit((initXUpperBound - initXLowerBound) / 10.0);
@@ -1476,7 +1644,7 @@ public class CandyJar extends Application implements Constants {
 
 					rectX.set(newX);
 					rectY.set(newY);
-					
+
 				} else if (mouseEvent.getEventType() == MouseEvent.MOUSE_RELEASED) {
 
 					System.err.println("released:" + mouseEvent.getX() + " " + mouseEvent.getY());
@@ -1571,6 +1739,20 @@ public class CandyJar extends Application implements Constants {
 		return shift;
 	}
 
-	
-	
+
+	public Button getFilterCandidates() {
+		return filterCandidates;
+	}
+
+
+	public CheckComboBox<CANDIDATE_TYPE> getFilterTypes() {
+		return filterTypes;
+	}
+
+
+
+
+
+
+
 }
