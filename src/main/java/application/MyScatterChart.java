@@ -19,8 +19,10 @@ import javafx.scene.chart.Axis;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.ScatterChart;
 import javafx.scene.control.Tooltip;
+import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Ellipse;
+import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.transform.Rotate;
 import javafx.util.Duration;
@@ -135,9 +137,11 @@ public class MyScatterChart extends ScatterChart<Number, Number> {
 					});		
 					
 					
-					//Text txt = new Text(x1, y1, beamNo.toString());
-					//ellipseList.add(txt);
-					//getPlotChildren().add(txt); 
+					Text txt = new Text(x1, y1, beamNo.toString());
+					txt.setOpacity(1.0);
+					txt.setFill(Color.ORANGERED);
+					ellipseList.add(txt);
+					getPlotChildren().add(txt); 
 
 
 					
