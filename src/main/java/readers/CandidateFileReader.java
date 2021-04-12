@@ -18,7 +18,7 @@ public class CandidateFileReader {
 			
 			List<Candidate> candidates = lines
 					.stream()
-					.filter(f -> !f.startsWith("#") && !f.contains("id")).map(f -> new Candidate(f)).collect(Collectors.toList());
+					.filter(f -> !f.startsWith("#") && !f.contains("pointing_id")).map(f -> new Candidate(f)).collect(Collectors.toList());
 			
 			
 			return candidates;
