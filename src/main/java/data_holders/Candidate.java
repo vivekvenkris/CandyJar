@@ -3,6 +3,7 @@ package data_holders;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,10 @@ import utilitites.Utilities;
 
 
 
+/**
+ * @author vkrishnan
+ *
+ */
 public class Candidate {
 	
 	private Integer pointingID;
@@ -60,65 +65,55 @@ public class Candidate {
 	
 	private Image image; 
 	
-	private List<Candidate> similarParamCandidates; 
+	private List<Candidate> similarCandidatesInFreq; 
+	
+	Beam beam;
+	
+	MetaFile metaFile;
 	
 	
 	private boolean visible;
 	
 
+
+
+	public boolean isSimilarTo(Candidate c2) {
+		
+//		if (Math.abs(this.getOptDM() - c2.getOptDM()) /this.getOptDMErr() < 1 &&
+//				Math.abs(this.getOptF0() - c2.getOptF0()) / this.getOptF0Err() < 1 &&
+//					Math.abs(this.getOptAcc() - c2.getOptAcc())/this.getOptAccErr() < 1) return true;
+//		else return false;
+		double minF0 = this.getOptF0() - 1e-4;
+		double maxF0 = this.getOptF0() + 1e-4;
+
+		for(int i=1; i<=32; i++) {
+			for(int j=1;j<=32;j++) {
+				double harmonic = ((double)i)/j;
+				if(c2.getOptF0() >= harmonic * minF0 && c2.getOptF0() <= harmonic * maxF0 ) {
+					return true;
+				}
+				
+			}
+		}
+		return false;
+		
+	}
 	
 	
 	public Candidate(){
-		similarParamCandidates = new ArrayList<Candidate>();
-	}
-	
-	public Candidate(Integer pointingID, Integer beamID, String beamName, String sourceName, Angle ra, Angle dec,
-			Angle gl, Angle gb, Double startMJD, LocalDateTime startUTC, Double userF0, Double optF0, Double optF0Err,
-			Double userF1, Double optF1, Double optF1Err, Double userAcc, Double optAcc, Double optAccErr,
-			Double userDM, Double optDM, Double optDMErr, Double fftSNR, Double foldSNR, Double peopoch,
-			Double maxDMYMW16, Double distYMW16, Double picsScoreTrapum, Double picsScorePALFA, String pngFilePath,
-			String metaFilePath, String filterbankPath, String tarballPath,CANDIDATE_TYPE candidateType) {
-		super();
-		this.pointingID = pointingID;
-		this.beamID = beamID;
-		this.beamName = beamName;
-		this.sourceName = sourceName;
-		this.ra = ra;
-		this.dec = dec;
-		this.gl = gl;
-		this.gb = gb;
-		this.startMJD = startMJD;
-		this.startUTC = startUTC;
-		this.userF0 = userF0;
-		this.optF0 = optF0;
-		this.optF0Err = optF0Err;
-		this.userF1 = userF1;
-		this.optF1 = optF1;
-		this.optF1Err = optF1Err;
-		this.userAcc = userAcc;
-		this.optAcc = optAcc;
-		this.optAccErr = optAccErr;
-		this.userDM = userDM;
-		this.optDM = optDM;
-		this.optDMErr = optDMErr;
-		this.fftSNR = fftSNR;
-		this.foldSNR = foldSNR;
-		this.peopoch = peopoch;
-		this.maxDMYMW16 = maxDMYMW16;
-		this.distYMW16 = distYMW16;
-		this.picsScoreTrapum = picsScoreTrapum;
-		this.picsScorePALFA = picsScorePALFA;
-		this.pngFilePath = pngFilePath;
-		this.metaFilePath = metaFilePath;
-		this.filterbankPath = filterbankPath;
-		this.tarballPath = tarballPath;
-		this.candidateType = candidateType;
+		similarCandidatesInFreq = new ArrayList<Candidate>();
+		this.candidateType = CANDIDATE_TYPE.UNCAT;
+		
 		this.visible = true;
-		similarParamCandidates = new ArrayList<Candidate>();
+		
+
+		
 		
 	}
-
+	
+	
 	public Candidate(String line) {
+		this();
 		String[] chunks = line.strip().split(",");
 		
 		int i=0;
@@ -155,20 +150,14 @@ public class Candidate {
 		this.metaFilePath = chunks[i++];
 		this.filterbankPath = chunks[i++];
 		this.tarballPath = chunks[i++];
-
-		
-		
-		this.candidateType = CANDIDATE_TYPE.UNCAT;
 		
 		this.utcString = Utilities.getUTCString(startUTC, DateTimeFormatter.ISO_DATE_TIME);
-		
-		similarParamCandidates = new ArrayList<Candidate>();
-		
-		this.visible = true;
 
-		
 	}
 	
+	public String getF0DMString() {
+		return String.format("%8.5f %4.2f", this.optF0, this.optDM);
+	}
 	
 	
 	@Override
@@ -466,27 +455,29 @@ public class Candidate {
 		this.image = image;
 	}
 
-	public List<Candidate> getSimilarParamCandidates() {
-		return similarParamCandidates;
-	}
-
-	public void setSimilarParamCandidates(List<Candidate> similarParamCandidates) {
-		this.similarParamCandidates = similarParamCandidates;
-	}
-
-
-
-	public boolean isSimilarTo(Candidate c2) {
-		
-		if (Math.abs(this.getOptDM() - c2.getOptDM()) /this.getOptDMErr() < 1 &&
-				Math.abs(this.getOptF0() - c2.getOptF0()) / this.getOptF0Err() < 1 &&
-					Math.abs(this.getOptAcc() - c2.getOptAcc())/this.getOptAccErr() < 1) return true;
-		else return false;
-				
-		
-	}
 	
 	
+
+	public Beam getBeam() {
+		return beam;
+	}
+
+
+	public void setBeam(Beam beam) {
+		this.beam = beam;
+	}
+
+
+	public List<Candidate> getSimilarCandidatesInFreq() {
+		return similarCandidatesInFreq;
+	}
+
+
+	public void setSimilarCandidatesInFreq(List<Candidate> similarCandidatesInFreq) {
+		this.similarCandidatesInFreq = similarCandidatesInFreq;
+	}
+
+
 	public Tuple<Double, Double> getOptDMTuple(){
 		return new Tuple<Double, Double>(getOptDM(), getOptDMErr());
 	}
@@ -539,8 +530,20 @@ public class Candidate {
 		return Beam.getIntegerBeamName(getBeamName()).doubleValue();
 	}
 	
+	
+	
 
 	
+	public MetaFile getMetaFile() {
+		return metaFile;
+	}
+
+
+	public void setMetaFile(MetaFile metaFile) {
+		this.metaFile = metaFile;
+	}
+
+
 	public static Tuple<Double, Double> getMinMax(List<Candidate> candidates, Function<Candidate, Tuple<Double, Double>> valueFunction) {
 		
 		Double min = valueFunction.apply(
