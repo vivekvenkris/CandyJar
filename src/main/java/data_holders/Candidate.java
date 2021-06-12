@@ -71,9 +71,28 @@ public class Candidate {
 	
 	MetaFile metaFile;
 	
+	private String lineNum;
 	
 	private boolean visible;
 	
+	public Double getOptP0() {
+		return 1/optF0;
+	}
+	
+
+
+
+	public String getLineNum() {
+		return lineNum;
+	}
+
+
+
+
+	public void setLineNum(String lineNum) {
+		this.lineNum = lineNum;
+	}
+
 
 
 
@@ -111,7 +130,7 @@ public class Candidate {
 		
 	}
 	
-	
+	@Deprecated
 	public Candidate(String line) {
 		this();
 		String[] chunks = line.strip().split(",");
