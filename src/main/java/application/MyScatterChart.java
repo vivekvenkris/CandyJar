@@ -137,11 +137,11 @@ public class MyScatterChart extends ScatterChart<Number, Number> {
 					});		
 					
 					
-					Text txt = new Text(x1, y1, beamNo.toString());
-					txt.setOpacity(1.0);
-					txt.setFill(Color.ORANGERED);
-					ellipseList.add(txt);
-					getPlotChildren().add(txt); 
+//					Text txt = new Text(x1, y1, beamNo.toString());
+//					txt.setOpacity(1.0);
+//					txt.setFill(Color.ORANGERED);
+//					ellipseList.add(txt);
+					//getPlotChildren().add(txt); 
 
 
 					
