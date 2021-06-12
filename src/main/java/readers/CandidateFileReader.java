@@ -10,12 +10,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import constants.CandidateFileConstants;
 import data_holders.Angle;
 import data_holders.Candidate;
 import data_holders.MetaFile;
+import data_holders.Candidate.CANDIDATE_TYPE;
 import exceptions.InvalidInputException;
 import utilitites.Utilities;
 
@@ -46,11 +48,13 @@ public class CandidateFileReader implements CandidateFileConstants {
 				headerPositions.put(x, headerChunks.indexOf(x));
 			}
 			
+		    AtomicInteger counter = new AtomicInteger(0);
 			lines.stream().filter(f -> !f.startsWith("#") && !f.contains("pointing_id"))
 			.forEach(f -> {
+				counter.getAndIncrement();
 				String[] chunks = f.split(",");
-				System.err.println(f);
 				Candidate c = new Candidate();
+				c.setLineNum(counter.toString());
 				if(headerPositions.getOrDefault(pointing_id, -1) != -1) c.setPointingID(Integer.parseInt(chunks[headerPositions.get(pointing_id)]));
 				if(headerPositions.getOrDefault(beam_id, -1) != -1) c.setBeamID(Integer.parseInt(chunks[headerPositions.get(beam_id)]));
 				if(headerPositions.getOrDefault(beam_name, -1) != -1) c.setBeamName(chunks[headerPositions.get(beam_name)]);
@@ -90,7 +94,8 @@ public class CandidateFileReader implements CandidateFileConstants {
 				if(headerPositions.getOrDefault(filterbank_path, -1) != -1) c.setFilterbankPath(chunks[headerPositions.get(filterbank_path)]);
 				if(headerPositions.getOrDefault(candidate_tarball_path, -1) != -1) c.setTarballPath(chunks[headerPositions.get(candidate_tarball_path)]);
 				
-				
+				c.setCandidateType(CANDIDATE_TYPE.UNCAT);
+
 				MetaFile metaFile = null;
 				try {
 					metaFile = metafiles.getOrDefault(c.getUtcString(), ApsuseMetaReader.parseFile(baseDir.getAbsolutePath() + File.separator +c.getMetaFilePath()));
