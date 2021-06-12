@@ -21,6 +21,7 @@ module candyjar {
     opens application to javafx.fxml;
     exports application;
     exports data_holders;
+    exports utilitites;
     
     
 
