@@ -36,8 +36,8 @@ public class CandidateFileReader implements CandidateFileConstants {
 //			List<Candidate> candidates = lines
 //					.stream()
 //					.filter(f -> !f.startsWith("#") && !f.contains("id")).map(f -> new Candidate(f)).collect(Collectors.toList());
-			
-			
+						
+
 			List<String> headers = lines.stream().filter(f-> f.contains("utc_start")).collect(Collectors.toList());
 			if (headers.isEmpty() || headers.size() > 1) {
 				throw new InvalidInputException("CSV is either the wrong format, or has no/multiple headers.");
@@ -110,7 +110,6 @@ public class CandidateFileReader implements CandidateFileConstants {
 				candidates.add(c);
 				
 			});
-			
 			
 			return candidates;
 			
