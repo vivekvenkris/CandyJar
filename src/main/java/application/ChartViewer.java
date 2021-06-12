@@ -78,6 +78,9 @@ public class ChartViewer {
 	
 	public ChartViewer(Rectangle2D currentScreenBounds, Integer numCharts, CandyJar candyJar) {
 
+		
+		System.err.println("Creating "+ numCharts + " charts");
+		
 		this.candyJar = candyJar;
 		
 		for(int i=0; i< numCharts; i++) {
