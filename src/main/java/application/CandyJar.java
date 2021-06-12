@@ -920,6 +920,43 @@ public class CandyJar extends Application implements Constants {
 		}else {
 			table.getItems().add(new Pair<String, Object>("Diagnostic information will be displayed here", ""));
 		}
+		
+//		Button dspsrButton = new Button();
+//		String dspsrText = "dspsr -t 4 -U 256 -k meerkat -c " + candidate.get
+//		
+//		table.getItems().add(new Pair<String, Object>("dspsr Predictor file", ""));
+
+		
+		Button prepfoldButton = new Button("prepfold");
+		Button pulsarxButton = new Button("pulsarx");
+		Button dspsrButton = new Button("dspsr");
+		
+		String outputStr = candidate.getSourceName()+"_"+ candidate.getBeamName() +"_" + candidate.getLineNum();
+		String prepfoldText = "prepfold" +  " -fixchi -dm " + candidate.getOptDM() 
+								 + " -nsub 64 -npart 64 -f " + candidate.getOptF0() + " -fd " + candidate.getOptF1() + " -o " + outputStr;
+		
+
+		String pulsarxText = "psrfold_fil -v -t 4 --template /home/psr/software/PulsarX/include/template/meerkat_fold.template "
+				+ "-L 10 --clfd 2.0 -z zdot -z kadaneF 8 4 -n 64 -b 64 -dspsr -plotx -dm " + candidate.getOptDM() + " -acc " + candidate.getOptAcc() 
+				+ " -f0 " + + candidate.getOptF0()+ " -o " + outputStr ;
+				
+		String dspsrText = "dspsr -t 4 -k meerkat -c " + candidate.getOptP0() + " -D " + candidate.getOptDM()  + " -b 128 -A  -Lmin 15 -L 20 -O " + outputStr ;
+		
+		
+		prepfoldButton.setOnAction(e -> {
+			AppUtils.copyToClipboardText(prepfoldText);
+		});
+		
+		pulsarxButton.setOnAction(e -> {
+			AppUtils.copyToClipboardText(pulsarxText);
+		});
+		
+		dspsrButton.setOnAction(e -> {
+			AppUtils.copyToClipboardText(dspsrText);
+		});
+		
+		
+		table.getItems().add(0, new Pair<String, Object>("Copy folding commands", new VBox(prepfoldButton, pulsarxButton, dspsrButton)));
 
 
 		TableColumn<Pair<String, Object>, String> nameColumn = new TableColumn<>("Item");
@@ -1031,6 +1068,9 @@ public class CandyJar extends Application implements Constants {
 			case P:
 				knownPulsar.fire();
 				break;
+			case R:
+				reset.fire();
+				break;
 
 			case SPACE:
 				if(!candidatesVisible) return;
@@ -1133,6 +1173,7 @@ public class CandyJar extends Application implements Constants {
 		rfi.setSelected(false);
 		knownPulsar.setSelected(false);
 		noise.setSelected(false);
+		reset.setSelected(true);
 
 		organiseImages(count);
 
@@ -1181,6 +1222,9 @@ public class CandyJar extends Application implements Constants {
 			break;
 		case NOISE:
 			noise.setSelected(true);
+			break;
+		case UNCAT:
+			reset.setSelected(true);
 			break;
 
 		}
