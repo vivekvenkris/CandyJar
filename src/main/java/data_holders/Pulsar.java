@@ -18,6 +18,13 @@ public class Pulsar {
 	
 	public Pulsar(){
 		ephemerides = "";
+		name = "PSR NULL";
+		f0 = 0.0;
+		f1 = 0.0;
+		p0 = 0.0;
+		p1 = 0.0;
+		dm = 0.0;
+		
 	}
 
 	public Angle getRa() {
