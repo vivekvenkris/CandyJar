@@ -77,6 +77,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -138,7 +139,6 @@ public class CandyJar extends Application implements Constants {
 
 	/* Top left: Filter and sort candidates */
 	final ComboBox<String> utcBox = new ComboBox<String>();
-	//final ComboBox<String> sortBox = new ComboBox<String>(FXCollections.observableArrayList(Arrays.asList(new String[] { "FOLD_SNR", "FFT_SNR", "PICS_TRAPUM", "PICS_PALFA", "DM", "F0" })));
 	final ComboBox<String> sortBox = new ComboBox<String>(FXCollections.observableArrayList(Candidate.SORTABLE_PARAMETERS_MAP.keySet()));
 	final CheckComboBox<CANDIDATE_TYPE> filterTypes = new CheckComboBox<CANDIDATE_TYPE>(FXCollections.observableArrayList(Arrays.asList(CANDIDATE_TYPE.values())));
 	final List<CANDIDATE_TYPE> filteredTypes = new ArrayList<CANDIDATE_TYPE>();
@@ -172,7 +172,9 @@ public class CandyJar extends Application implements Constants {
 	final ToggleButton tier1 = new ToggleButton("Tier1 (i)");
 	final ToggleButton tier2 = new ToggleButton("Tier2 (o)");
 	final ToggleButton knownPulsar = new ToggleButton("Known pulsar (p)");
-	final SegmentedButton candidateCategories = new SegmentedButton(FXCollections.observableArrayList(Arrays.asList(new ToggleButton[] {rfi, noise, tier1, tier2, knownPulsar})));
+	final ToggleButton reset = new ToggleButton("Uncat (r)");
+
+	final SegmentedButton candidateCategories = new SegmentedButton(FXCollections.observableArrayList(Arrays.asList(new ToggleButton[] {rfi, noise, tier1, tier2, knownPulsar, reset})));
 	final Label message = new Label("All ok. Select a directory");
 
 	final Button saveClassification = new Button("Save classification");
@@ -348,7 +350,7 @@ public class CandyJar extends Application implements Constants {
 				loadClassification.setVisible(true);
 
 				try {
-					fullCandiatesList.addAll(CandidateFileReader.readCandidateFile(csv));
+					fullCandiatesList.addAll(CandidateFileReader.readCandidateFile(csv, baseDir));
 
 					utcs.addAll(fullCandiatesList.stream().map(f -> f.getStartUTC()).collect(Collectors.toSet()));
 
@@ -372,6 +374,11 @@ public class CandyJar extends Application implements Constants {
 					utcBox.setVisible(false);
 					loadClassification.setVisible(false);
 				}catch (IOException e) {
+					message.setText(e.getMessage());
+					e.printStackTrace();
+					utcBox.setVisible(false);
+					loadClassification.setVisible(false);
+				} catch (InvalidInputException e) {
 					message.setText(e.getMessage());
 					e.printStackTrace();
 					utcBox.setVisible(false);
@@ -409,58 +416,55 @@ public class CandyJar extends Application implements Constants {
 				/* stupid stub because you need atleast one candidate to get the meta file */
 				shortlistCandidates(utc, Arrays.asList(CANDIDATE_TYPE.values()));
 
-				try {
-					metaFile = ApsuseMetaReader.parseFile(baseDir.getAbsolutePath() + File.separator
-							+ candidates.get(imageCounter).getMetaFilePath());
-					metaFile.findNeighbours();
-					pulsarsInBeam.clear();
-					pulsarsInBeam.addAll(psrcat.getPulsarsInBeam(metaFile.getBoresight().getRa(),
-							metaFile.getBoresight().getDec(), new Angle(1.0, Angle.DEG, Angle.DEG)));
-					infoPane.getTabs().clear();
-					candidateTab.setClosable(false);
-					diagnosticTab.setClosable(false);
-					updateTab(candidateTab, null);
-					populatePulsarTabs(infoPane);
-					infoPane.getTabs().add(0, candidateTab);
-					infoPane.getTabs().add(1, diagnosticTab);
+				metaFile = candidates.get(imageCounter).getMetaFile();
 
-					double xLowerBound = metaFile.getMinRa().getDecimalHourValue();
-					double xUpperBound = metaFile.getMaxRa().getDecimalHourValue();
-					double xDiff = xUpperBound - xLowerBound;
+				metaFile.findNeighbours();
+				pulsarsInBeam.clear();
+				pulsarsInBeam.addAll(psrcat.getPulsarsInBeam(metaFile.getBoresight().getRa(),
+						metaFile.getBoresight().getDec(), new Angle(1.0, Angle.DEG, Angle.DEG)));
+				infoPane.getTabs().clear();
+				candidateTab.setClosable(false);
+				diagnosticTab.setClosable(false);
+				updateTab(candidateTab, null);
+				populatePulsarTabs(infoPane);
+				infoPane.getTabs().add(0, candidateTab);
+				infoPane.getTabs().add(1, diagnosticTab);
 
-					xLowerBound = xLowerBound - xDiff / 20;
-					xUpperBound = xUpperBound + xDiff / 20;
+				double xLowerBound = metaFile.getMinRa().getDecimalHourValue();
+				double xUpperBound = metaFile.getMaxRa().getDecimalHourValue();
+				double xDiff = xUpperBound - xLowerBound;
 
-					double yLowerBound = metaFile.getMinDec().getDegreeValue();
-					double yUpperBound = metaFile.getMaxDec().getDegreeValue();
-					double yDiff = yUpperBound - yLowerBound;
+				xLowerBound = xLowerBound - xDiff / 20;
+				xUpperBound = xUpperBound + xDiff / 20;
 
-					yLowerBound = yLowerBound - yDiff / 20;
-					yUpperBound = yUpperBound + yDiff / 20;
+				double yLowerBound = metaFile.getMinDec().getDegreeValue();
+				double yUpperBound = metaFile.getMaxDec().getDegreeValue();
+				double yDiff = yUpperBound - yLowerBound;
 
-					initXUpperBound = xUpperBound;
-					initXLowerBound = xLowerBound;
-					initYLowerBound = yLowerBound;
-					initYUpperBound = yUpperBound;
+				yLowerBound = yLowerBound - yDiff / 20;
+				yUpperBound = yUpperBound + yDiff / 20;
 
-					beamMapXAxis.setLowerBound(xLowerBound);
-					beamMapXAxis.setUpperBound(xUpperBound);
-					beamMapXAxis.setTickUnit(0.01);
+				initXUpperBound = xUpperBound;
+				initXLowerBound = xLowerBound;
+				initYLowerBound = yLowerBound;
+				initYUpperBound = yUpperBound;
 
-					beamMapYAxis.setLowerBound(yLowerBound);
-					beamMapYAxis.setUpperBound(yUpperBound);
-					beamMapYAxis.setTickUnit(-0.01);
+				beamMapXAxis.setLowerBound(xLowerBound);
+				beamMapXAxis.setUpperBound(xUpperBound);
+				beamMapXAxis.setTickUnit(0.01);
 
-					beamMapXAxis.setLabel("RA (hms)");
-					beamMapYAxis.setLabel("DEC (dms)");
+				beamMapYAxis.setLowerBound(yLowerBound);
+				beamMapYAxis.setUpperBound(yUpperBound);
+				beamMapYAxis.setTickUnit(-0.01);
 
-					addDefaultMap(metaFile, pulsarsInBeam);
+				beamMapXAxis.setLabel("RA (hms)");
+				beamMapYAxis.setLabel("DEC (dms)");
 
-					message.setText("Meta file and neighbouring pulsars added. Please filter required candidates.");
+				addDefaultMap(metaFile, pulsarsInBeam);
 
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				message.setText("Meta file and neighbouring pulsars added. Please filter required candidates.");
+
+			
 
 			}
 		});
@@ -606,6 +610,17 @@ public class CandyJar extends Application implements Constants {
 
 			}
 		});
+		
+		reset.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				if(! candidatesVisible) return;
+				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.UNCAT);
+
+			}
+		});
+
 
 		saveClassification.setOnAction(new EventHandler<ActionEvent>() {
 
@@ -801,47 +816,42 @@ public class CandyJar extends Application implements Constants {
 			else
 				message.setText("Cannot find beam: " + candidate.getBeamName());
 
-			//			table.getItems().add(new Pair<String, Object>("similar candidates:", candidate.getSimilarParamCandidates().stream()
-			//					.map(f ->{
-			//						return f.getBeamName() + " " + f.getPngFilePath();	
-			//					}).collect(Collectors.toList()).toString()));
-
 			table.getItems().add(new Pair<String, Object>("Pointing ID:", candidate.getPointingID()));
 			table.getItems().add(new Pair<String, Object>("Beam ID:", candidate.getBeamID()));
 			table.getItems().add(new Pair<String, Object>("Beam Name:", candidate.getBeamName()));
 			table.getItems().add(new Pair<String, Object>("Neighbour beams:", neighbours.toString()));
 			table.getItems()
-			.add(new Pair<String, Object>("PICS score (TRAPUM):", candidate.getPicsScoreTrapum().toString()));
+			.add(new Pair<String, Object>("PICS score (TRAPUM):", candidate.getPicsScoreTrapum()));
 			table.getItems()
-			.add(new Pair<String, Object>("PICS score (PALFA):", candidate.getPicsScorePALFA().toString()));
-			table.getItems().add(new Pair<String, Object>("FFT SNR:", candidate.getFftSNR().toString()));
-			table.getItems().add(new Pair<String, Object>("Fold SNR: ", candidate.getFoldSNR().toString()));
+			.add(new Pair<String, Object>("PICS score (PALFA):", candidate.getPicsScorePALFA()));
+			table.getItems().add(new Pair<String, Object>("FFT SNR:", candidate.getFftSNR()));
+			table.getItems().add(new Pair<String, Object>("Fold SNR: ", candidate.getFoldSNR()));
 
 			table.getItems().add(new Pair<String, Object>("Boresight:", candidate.getSourceName()));
-			table.getItems().add(new Pair<String, Object>("RA:", candidate.getRa().toHHMMSS()));
-			table.getItems().add(new Pair<String, Object>("DEC:", candidate.getDec().toDDMMSS()));
-			table.getItems().add(new Pair<String, Object>("GL:", candidate.getGl().getDegreeValue().toString()));
-			table.getItems().add(new Pair<String, Object>("GB:", candidate.getGb().getDegreeValue().toString()));
+			table.getItems().add(new Pair<String, Object>("RA:", candidate.getRa()));
+			table.getItems().add(new Pair<String, Object>("DEC:", candidate.getDec()));
+			table.getItems().add(new Pair<String, Object>("GL:", candidate.getGl()));
+			table.getItems().add(new Pair<String, Object>("GB:", candidate.getGb()));
 
-			table.getItems().add(new Pair<String, Object>("Start MJD:", candidate.getStartMJD().toString()));
-			table.getItems().add(new Pair<String, Object>("Start UTC:", candidate.getStartUTC().toString()));
-			table.getItems().add(new Pair<String, Object>("Input F0:", candidate.getUserF0().toString()));
+			table.getItems().add(new Pair<String, Object>("Start MJD:", candidate.getStartMJD()));
+			table.getItems().add(new Pair<String, Object>("Start UTC:", candidate.getStartUTC()));
+			table.getItems().add(new Pair<String, Object>("Input F0:", candidate.getUserF0()));
 			table.getItems().add(
 					new Pair<String, Object>("Best F0:", candidate.getOptF0() + " +/- " + candidate.getOptF0Err()));
-			table.getItems().add(new Pair<String, Object>("Input F1:", candidate.getUserF1().toString()));
+			table.getItems().add(new Pair<String, Object>("Input F1:", candidate.getUserF1()));
 			table.getItems().add(
 					new Pair<String, Object>("Best F1:", candidate.getOptF1() + " +/- " + candidate.getOptF1Err()));
-			table.getItems().add(new Pair<String, Object>("Input Acc:", candidate.getUserAcc().toString()));
+			table.getItems().add(new Pair<String, Object>("Input Acc:", candidate.getUserAcc()));
 			table.getItems().add(
 					new Pair<String, Object>("Best Acc:", candidate.getOptAcc() + " +/- " + candidate.getOptAccErr()));
-			table.getItems().add(new Pair<String, Object>("Input DM:", candidate.getUserDM().toString()));
+			table.getItems().add(new Pair<String, Object>("Input DM:", candidate.getUserDM()));
 			table.getItems().add(
 					new Pair<String, Object>("Best DM: ", candidate.getOptDM() + " +/- " + candidate.getOptDMErr()));
 
-			table.getItems().add(new Pair<String, Object>("Epoch of F0:", candidate.getPeopoch().toString()));
-			table.getItems().add(new Pair<String, Object>("Max DM (YMW16):", candidate.getMaxDMYMW16().toString()));
+			table.getItems().add(new Pair<String, Object>("Epoch of F0:", candidate.getPeopoch()));
+			table.getItems().add(new Pair<String, Object>("Max DM (YMW16):", candidate.getMaxDMYMW16()));
 			table.getItems()
-			.add(new Pair<String, Object>("Max Distance (YMW16):", candidate.getDistYMW16().toString()));
+			.add(new Pair<String, Object>("Max Distance (YMW16):", candidate.getDistYMW16()));
 
 			table.getItems().add(new Pair<String, Object>("PNG path:", candidate.getPngFilePath()));
 			table.getItems().add(new Pair<String, Object>("Metafile path:", candidate.getMetaFilePath()));
@@ -886,12 +896,24 @@ public class CandyJar extends Application implements Constants {
 
 	public void updateDiagnosticTab(TabPane tabPane, Candidate candidate) {
 		final TableView<Pair<String, Object>> table = new TableView<>();
+		VBox similarCandidateVBox = new VBox();
+		similarCandidateVBox.getChildren().addAll(candidate.getSimilarCandidatesInFreq().stream().map(f -> {
+			String fileStr = f.getPngFilePath();
+			Hyperlink link = new Hyperlink(fileStr);
+			link.setText(f.getF0DMString());
+			link.setOnAction(e ->
+				getHostServices().showDocument(new File( baseDir.getAbsolutePath() + File.separator + fileStr).toURI().toString()));
 
+			return link;
+
+		}).collect(Collectors.toList()));
+		table.getItems().add(new Pair<String, Object>("Likely related candidates:" , similarCandidateVBox));
 
 		if(pulsarsInBeam != null && !pulsarsInBeam.isEmpty()) {
 
 			for (Pulsar pulsar : pulsarsInBeam) {
 				table.getItems().add(new Pair<String, Object>(pulsar.getName() , KnownPulsarGuesser.guessPulsar(candidate, pulsar)));
+				
 
 			}
 
@@ -973,58 +995,7 @@ public class CandyJar extends Application implements Constants {
 
 	}
 
-	class PairKeyFactory
-	implements Callback<TableColumn.CellDataFeatures<Pair<String, Object>, String>, ObservableValue<String>> {
-		@Override
-		public ObservableValue<String> call(TableColumn.CellDataFeatures<Pair<String, Object>, String> data) {
-			return new ReadOnlyObjectWrapper<>(data.getValue().getKey());
-		}
-	}
-
-	class PairValueFactory
-	implements Callback<TableColumn.CellDataFeatures<Pair<String, Object>, Object>, ObservableValue<Object>> {
-		@SuppressWarnings("unchecked")
-		@Override
-		public ObservableValue<Object> call(TableColumn.CellDataFeatures<Pair<String, Object>, Object> data) {
-			Object value = data.getValue().getValue();
-			return (value instanceof ObservableValue) ? (ObservableValue) value : new ReadOnlyObjectWrapper<>(value);
-		}
-	}
-
-	class PairValueCell extends TableCell<Pair<String, Object>, Object> {
-		@Override
-		protected void updateItem(Object item, boolean empty) {
-			super.updateItem(item, empty);
-
-			if (item != null) {
-				if (item instanceof String) {
-					setText((String) item);
-					setGraphic(null);
-				} else if (item instanceof Integer) {
-					setText(Integer.toString((Integer) item));
-					setGraphic(null);
-				} else if (item instanceof Boolean) {
-					CheckBox checkBox = new CheckBox();
-					checkBox.setSelected((boolean) item);
-					setGraphic(checkBox);
-				} else if (item instanceof Image) {
-					setText(null);
-					ImageView imageView = new ImageView((Image) item);
-					imageView.setFitWidth(100);
-					imageView.setPreserveRatio(true);
-					imageView.setSmooth(true);
-					setGraphic(imageView);
-				} else {
-					setText("N/A");
-					setGraphic(null);
-				}
-			} else {
-				setText(null);
-				setGraphic(null);
-			}
-		}
-	}
-
+	
 	/* process key events */
 
 	EventHandler<KeyEvent> keyEventHandler = new EventHandler<KeyEvent>() {
@@ -1090,9 +1061,12 @@ public class CandyJar extends Application implements Constants {
 
 		candidates.addAll(candidatesForUTC.stream()
 				.filter(f -> f.getStartUTC().equals(utc) && types.contains(f.getCandidateType()) && f.isVisible())
-				.sorted(Comparator.comparing(f -> Candidate.SORTABLE_PARAMETERS_MAP.get(sortBox.getValue())
-						.apply((Candidate) f))
-						.reversed())
+				.sorted(Comparator.comparing(f -> {
+					Double result = Candidate.SORTABLE_PARAMETERS_MAP.get(sortBox.getValue()).apply((Candidate) f);
+					if (result == null) result = 0.0;
+					return result;
+				})
+				.reversed())
 				.collect(Collectors.toList()));
 
 
@@ -1373,7 +1347,11 @@ public class CandyJar extends Application implements Constants {
 
 
 				if (c1.isSimilarTo(c2)) { 
-					if(!c1.equals(c2)) c1.getSimilarParamCandidates().add(c2);
+					if(!c1.equals(c2)) {
+						c1.getSimilarCandidatesInFreq().add(c2);
+
+					}
+					
 				}
 
 
@@ -1506,7 +1484,7 @@ public class CandyJar extends Application implements Constants {
 		}
 
 
-
+		//Application.launch(ScatterAndBubbleRendererSample.class);
 		Application.launch(CandyJar.class);
 
 	}
@@ -1750,6 +1728,64 @@ public class CandyJar extends Application implements Constants {
 	}
 
 
+	class PairKeyFactory
+	implements Callback<TableColumn.CellDataFeatures<Pair<String, Object>, String>, ObservableValue<String>> {
+		@Override
+		public ObservableValue<String> call(TableColumn.CellDataFeatures<Pair<String, Object>, String> data) {
+			return new ReadOnlyObjectWrapper<>(data.getValue().getKey());
+		}
+	}
+
+	class PairValueFactory
+	implements Callback<TableColumn.CellDataFeatures<Pair<String, Object>, Object>, ObservableValue<Object>> {
+		@SuppressWarnings("unchecked")
+		@Override
+		public ObservableValue<Object> call(TableColumn.CellDataFeatures<Pair<String, Object>, Object> data) {
+			Object value = data.getValue().getValue();
+			return (value instanceof ObservableValue) ? (ObservableValue) value : new ReadOnlyObjectWrapper<>(value);
+		}
+	}
+
+	class PairValueCell extends TableCell<Pair<String, Object>, Object> {
+		@Override
+		protected void updateItem(Object item, boolean empty) {
+			super.updateItem(item, empty);
+
+			if (item != null) {
+				if (item instanceof String) {
+					setText((String) item);
+					setGraphic(null);
+				} else if (item instanceof Integer) {
+					setText(Integer.toString((Integer) item));
+					setGraphic(null);
+				} else if (item instanceof Boolean) {
+					CheckBox checkBox = new CheckBox();
+					checkBox.setSelected((boolean) item);
+					setGraphic(checkBox);
+				} else if (item instanceof Image) {
+					setText(null);
+					ImageView imageView = new ImageView((Image) item);
+					imageView.setFitWidth(100);
+					imageView.setPreserveRatio(true);
+					imageView.setSmooth(true);
+					setGraphic(imageView);
+				} else if (item instanceof Node) {
+					setText(null);
+					setGraphic((Node) item);
+				} else if   (item instanceof Number) {
+					setText(item.toString());
+					setGraphic(null);
+					
+				} else {
+					setText(item.toString());
+					setGraphic(null);
+				}
+			} else {
+				setText(null);
+				setGraphic(null);
+			}
+		}
+	}
 
 
 
