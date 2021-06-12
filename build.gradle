@@ -189,4 +189,10 @@ application {
             
             
     ]
+    //mainClassName = project.findProperty("chooseMain").toString()
 }
+
+
+
+
+
