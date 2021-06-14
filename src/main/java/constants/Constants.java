@@ -26,6 +26,7 @@ public interface Constants {
 	Double sec2Hrs = 1/(60.0*60.0);
 	Double hrs2Day = 1/(24.0);
 	Double day2Hrs = (24.0);
+	Double day2Secs = (86400.0);
 
 
 	Double hrs2Sec = 3600.0;
