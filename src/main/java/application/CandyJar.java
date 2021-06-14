@@ -925,6 +925,9 @@ public class CandyJar extends Application implements Constants {
 //		String dspsrText = "dspsr -t 4 -U 256 -k meerkat -c " + candidate.get
 //		
 //		table.getItems().add(new Pair<String, Object>("dspsr Predictor file", ""));
+		
+
+		
 
 		
 		Button prepfoldButton = new Button("prepfold");
@@ -933,14 +936,14 @@ public class CandyJar extends Application implements Constants {
 		
 		String outputStr = candidate.getSourceName()+"_"+ candidate.getBeamName() +"_" + candidate.getLineNum();
 		String prepfoldText = "prepfold" +  " -fixchi -dm " + candidate.getOptDM() 
-								 + " -nsub 64 -npart 64 -f " + candidate.getOptF0() + " -fd " + candidate.getOptF1() + " -o " + outputStr;
+								 + " -nsub 64 -npart 64 -f " + candidate.getF0AtStart() + " -fd " + candidate.getOptF1() + " -o " + outputStr;
 		
 
 		String pulsarxText = "psrfold_fil -v -t 4 --template /home/psr/software/PulsarX/include/template/meerkat_fold.template "
 				+ "-L 10 --clfd 2.0 -z zdot -z kadaneF 8 4 -n 64 -b 64 -dspsr -plotx -dm " + candidate.getOptDM() + " -acc " + candidate.getOptAcc() 
 				+ " -f0 " + + candidate.getOptF0()+ " -o " + outputStr ;
 				
-		String dspsrText = "dspsr -t 4 -k meerkat -c " + candidate.getOptP0() + " -D " + candidate.getOptDM()  + " -b 128 -A  -Lmin 15 -L 20 -O " + outputStr ;
+		String dspsrText = "dspsr -t 4 -k meerkat -c " + candidate.getP0AtStart() + " -D " + candidate.getOptDM()  + " -b 128 -A  -Lmin 15 -L 20 -O " + outputStr ;
 		
 		
 		prepfoldButton.setOnAction(e -> {
