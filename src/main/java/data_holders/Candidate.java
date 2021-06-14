@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import constants.Constants;
 import de.gsi.chart.marker.DefaultMarker;
 import de.gsi.chart.marker.Marker;
 import de.gsi.dataset.spi.utils.Tuple;
@@ -58,6 +59,8 @@ public class Candidate {
 	private String metaFilePath;
 	private String filterbankPath;
 	private String tarballPath;
+	
+	private boolean isPeriodAtStart;
 
 	private CANDIDATE_TYPE candidateType;
 	
@@ -93,7 +96,17 @@ public class Candidate {
 		this.lineNum = lineNum;
 	}
 
+	public double getP0AtStart() {
+		return 1/getF0AtStart();
+	}
+	
+	public double getF0AtStart() {
+		
+		if(this.isPeriodAtStart) return this.optF0;
 
+		return this.optF0 - this.optF1 * (this.peopoch - this.startMJD) * Constants.day2Secs;
+		
+	}
 
 
 	public boolean isSimilarTo(Candidate c2) {
@@ -125,8 +138,11 @@ public class Candidate {
 		
 		this.visible = true;
 		
-
 		
+		this.isPeriodAtStart = false;
+		
+		if(this.startMJD != null && this.peopoch !=null && Double.compare(this.peopoch, this.startMJD)<= 0) this.isPeriodAtStart = true;
+
 		
 	}
 	
