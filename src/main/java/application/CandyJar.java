@@ -816,7 +816,7 @@ public class CandyJar extends Application implements Constants {
 			else
 				message.setText("Cannot find beam: " + candidate.getBeamName());
 
-			table.getItems().add(new Pair<String, Object>("Pointing ID:", candidate.getPointingID()));
+			table.getItems().add(new Pair<String, Object>("Pointing ID:", candidate.getPointingID())); 
 			table.getItems().add(new Pair<String, Object>("Beam ID:", candidate.getBeamID()));
 			table.getItems().add(new Pair<String, Object>("Beam Name:", candidate.getBeamName()));
 			table.getItems().add(new Pair<String, Object>("Neighbour beams:", neighbours.toString()));

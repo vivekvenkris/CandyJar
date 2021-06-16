@@ -19,7 +19,11 @@ public class Beam {
 	public static Integer getIntegerBeamName(String beamName) {
 		if(beamName.contains("ifbf")) return -1;
 		else {
-			return Integer.parseInt(beamName.replaceAll("\\D+", ""));
+			try {
+				return Integer.parseInt(beamName.replaceAll("\\D+", ""));
+			}catch (Exception e) {
+				return 0;
+			}
 		}
 	}
 	
