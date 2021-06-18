@@ -926,7 +926,8 @@ public class CandyJar extends Application implements Constants {
 //		
 //		table.getItems().add(new Pair<String, Object>("dspsr Predictor file", ""));
 		
-
+		boolean addAcc = false;
+		if(candidate.getOptAcc() / candidate.getOptAccErr() > 2 ) addAcc = true;
 		
 
 		
@@ -935,16 +936,32 @@ public class CandyJar extends Application implements Constants {
 		Button dspsrButton = new Button("dspsr");
 		
 		String outputStr = candidate.getSourceName()+"_"+ candidate.getBeamName() +"_" + candidate.getLineNum();
-		String prepfoldText = "prepfold" +  " -fixchi -dm " + candidate.getOptDM() 
-								 + " -nsub 64 -npart 64 -f " + candidate.getF0AtStart() + " -fd " + candidate.getOptF1() + " -o " + outputStr;
+		String prepfoldTextGen = "prepfold" +  " -fixchi -dm " + candidate.getOptDM() + " -nsub 64 -npart 64 -f " + candidate.getF0AtStart();
+		if(addAcc) prepfoldTextGen += " -fd " + candidate.getOptF1();
+		prepfoldTextGen +=	" -o " + outputStr + " " + candidate.getFilterbankPath();			 
+						
+		String pulsarxTextGen = "psrfold_fil -v -t 4 --template /home/psr/software/PulsarX/include/template/meerkat_fold.template "
+				+ "-L 10 --clfd 2.0 -z zdot -z kadaneF 8 4 -n 64 -b 64 -dspsr -plotx -dm " + candidate.getOptDM() + " -f0 " + + candidate.getOptF0();		
+		if(addAcc)		pulsarxTextGen+= " -acc " + candidate.getOptAcc();		
+		pulsarxTextGen+= " -o " + outputStr + " -f" + candidate.getFilterbankPath() ;
 		
-
-		String pulsarxText = "psrfold_fil -v -t 4 --template /home/psr/software/PulsarX/include/template/meerkat_fold.template "
-				+ "-L 10 --clfd 2.0 -z zdot -z kadaneF 8 4 -n 64 -b 64 -dspsr -plotx -dm " + candidate.getOptDM() + " -acc " + candidate.getOptAcc() 
-				+ " -f0 " + + candidate.getOptF0()+ " -o " + outputStr ;
-				
-		String dspsrText = "dspsr -t 4 -k meerkat -c " + candidate.getP0AtStart() + " -D " + candidate.getOptDM()  + " -b 128 -A  -Lmin 15 -L 20 -O " + outputStr ;
+		String dspsrTextGen = "dspsr -t 4 -k meerkat -b 128 -A  -Lmin 15 -L 20";
+		if(addAcc) {
+			String predictor = "SOURCE: " + outputStr + "\\n"
+					+ "PERIOD: " + candidate.getOptP0() + " s\\n"
+					+ "DM: "+ candidate.getOptDM()+"\\n"
+					+ "ACC: "+ candidate.getOptAcc()+" (m/s/s)\\n"
+					+ "RA: "+ candidate.getRa()+"\\n"
+					+ "DEC: "+ candidate.getDec();
+			dspsrTextGen = "echo \"" + predictor + "\" > " + outputStr+"_pred.txt;" +  dspsrTextGen + " -P " + outputStr+"_pred.txt " +  " -O " + outputStr + candidate.getFilterbankPath() ;
+		}
+		else {
+			dspsrTextGen = dspsrTextGen + " -c " + candidate.getP0AtStart() + " -D " + candidate.getOptDM()  + " -O " + outputStr ;
+		}
 		
+		final String prepfoldText = prepfoldTextGen;
+		final String pulsarxText = pulsarxTextGen;
+		final String dspsrText = dspsrTextGen;
 		
 		prepfoldButton.setOnAction(e -> {
 			AppUtils.copyToClipboardText(prepfoldText);
