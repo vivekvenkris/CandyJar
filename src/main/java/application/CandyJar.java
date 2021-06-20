@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
@@ -85,6 +87,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -105,7 +108,6 @@ import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import javafx.util.Callback;
 import javafx.util.Pair;
-import readers.ApsuseMetaReader;
 import readers.CandidateFileReader;
 import readers.Psrcat;
 import utilitites.AppUtils;
@@ -140,12 +142,20 @@ public class CandyJar extends Application implements Constants {
 	/* Top left: Filter and sort candidates */
 	final ComboBox<String> utcBox = new ComboBox<String>();
 	final ComboBox<String> sortBox = new ComboBox<String>(FXCollections.observableArrayList(Candidate.SORTABLE_PARAMETERS_MAP.keySet()));
+	
+	 
+     // Creating new Toggle buttons.
+     ToggleButton ascendingButton = new ToggleButton("A");
+     ToggleButton descendingButton = new ToggleButton("D");
+	final SegmentedButton sortOrder = new SegmentedButton(ascendingButton, descendingButton);
+	
+	
 	final CheckComboBox<CANDIDATE_TYPE> filterTypes = new CheckComboBox<CANDIDATE_TYPE>(FXCollections.observableArrayList(Arrays.asList(CANDIDATE_TYPE.values())));
 	final List<CANDIDATE_TYPE> filteredTypes = new ArrayList<CANDIDATE_TYPE>();
 	final Button filterCandidates = new Button("Go");
 
 
-	final HBox candidateFilterHBox = new HBox(10, filterTypes, sortBox, filterCandidates);
+	final HBox candidateFilterHBox = new HBox(10, filterTypes, sortBox, sortOrder, filterCandidates);
 	final VBox controlBox = new VBox(10, new HBox(10, rootDirTB.getTextField(),fileSelectButton,rootDirTB.getButton(), loadClassification),	new HBox(10, utcBox, candidateFilterHBox));
 
 
@@ -239,7 +249,7 @@ public class CandyJar extends Application implements Constants {
 
 		filterTypes.setTooltip(new Tooltip("Select the types of candidates to filter"));
 		utcBox.setTooltip(new Tooltip("Select UTC to view candidates"));
-		sortBox.setTooltip(new Tooltip("Select value to sort by"));
+		sortBox.setTooltip(new Tooltip("Select value to sort by and the order"));
 
 
 		beamMapChart.setCursor(Cursor.CROSSHAIR);
@@ -282,6 +292,7 @@ public class CandyJar extends Application implements Constants {
 		candidateFilterHBox.setVisible(false);
 		sortBox.setVisible(false);
 		actionsBox.setVisible(false);
+		sortOrder.setVisible(false);
 
 		gotoCandidate.getTextField().setPromptText("Go to Candidate");
 
@@ -403,6 +414,7 @@ public class CandyJar extends Application implements Constants {
 				imageView.setVisible(false);
 				actionsBox.setVisible(false);
 				sortBox.setVisible(true);
+				sortOrder.setVisible(true);
 				candidatesVisible = false;
 
 				String utcString = utcBox.getValue();
@@ -796,7 +808,7 @@ public class CandyJar extends Application implements Constants {
 		pulsarPositions.setName(Constants.KNOWN_PULSAR_BEAM_MAP);
 
 		beamMapChart.getData().add(beamPositions);
-		// chart.getData().add(pulsarPositions);
+		//chart.getData().add(pulsarPositions);
 
 	}
 
@@ -816,47 +828,47 @@ public class CandyJar extends Application implements Constants {
 			else
 				message.setText("Cannot find beam: " + candidate.getBeamName());
 
-			table.getItems().add(new Pair<String, Object>("Pointing ID:", candidate.getPointingID())); 
-			table.getItems().add(new Pair<String, Object>("Beam ID:", candidate.getBeamID()));
-			table.getItems().add(new Pair<String, Object>("Beam Name:", candidate.getBeamName()));
+			table.getItems().add(new Pair<String, Object>("Pointing ID:", new CopyableLabel(candidate.getPointingID()))); 
+			table.getItems().add(new Pair<String, Object>("Beam ID:", new CopyableLabel(candidate.getBeamID())));
+			table.getItems().add(new Pair<String, Object>("Beam Name:", new CopyableLabel(candidate.getBeamName())));
 			table.getItems().add(new Pair<String, Object>("Neighbour beams:", neighbours.toString()));
 			table.getItems()
-			.add(new Pair<String, Object>("PICS score (TRAPUM):", candidate.getPicsScoreTrapum()));
+			.add(new Pair<String, Object>("PICS score (TRAPUM):", new CopyableLabel(candidate.getPicsScoreTrapum())));
 			table.getItems()
-			.add(new Pair<String, Object>("PICS score (PALFA):", candidate.getPicsScorePALFA()));
-			table.getItems().add(new Pair<String, Object>("FFT SNR:", candidate.getFftSNR()));
-			table.getItems().add(new Pair<String, Object>("Fold SNR: ", candidate.getFoldSNR()));
+			.add(new Pair<String, Object>("PICS score (PALFA):", new CopyableLabel(candidate.getPicsScorePALFA())));
+			table.getItems().add(new Pair<String, Object>("FFT SNR:", new CopyableLabel(candidate.getFftSNR())));
+			table.getItems().add(new Pair<String, Object>("Fold SNR: ", new CopyableLabel(candidate.getFoldSNR())));
 
-			table.getItems().add(new Pair<String, Object>("Boresight:", candidate.getSourceName()));
-			table.getItems().add(new Pair<String, Object>("RA:", candidate.getRa()));
-			table.getItems().add(new Pair<String, Object>("DEC:", candidate.getDec()));
-			table.getItems().add(new Pair<String, Object>("GL:", candidate.getGl()));
-			table.getItems().add(new Pair<String, Object>("GB:", candidate.getGb()));
+			table.getItems().add(new Pair<String, Object>("Boresight:", new CopyableLabel(candidate.getSourceName())));
+			table.getItems().add(new Pair<String, Object>("RA:", new CopyableLabel(candidate.getRa())));
+			table.getItems().add(new Pair<String, Object>("DEC:", new CopyableLabel(candidate.getDec())));
+			table.getItems().add(new Pair<String, Object>("GL:", new CopyableLabel(candidate.getGl())));
+			table.getItems().add(new Pair<String, Object>("GB:", new CopyableLabel(candidate.getGb())));
 
-			table.getItems().add(new Pair<String, Object>("Start MJD:", candidate.getStartMJD()));
-			table.getItems().add(new Pair<String, Object>("Start UTC:", candidate.getStartUTC()));
-			table.getItems().add(new Pair<String, Object>("Input F0:", candidate.getUserF0()));
+			table.getItems().add(new Pair<String, Object>("Start MJD:", new CopyableLabel(candidate.getStartMJD())));
+			table.getItems().add(new Pair<String, Object>("Start UTC:", new CopyableLabel(candidate.getStartUTC())));
+			table.getItems().add(new Pair<String, Object>("Input F0:", new CopyableLabel(candidate.getUserF0())));
 			table.getItems().add(
-					new Pair<String, Object>("Best F0:", candidate.getOptF0() + " +/- " + candidate.getOptF0Err()));
+					new Pair<String, Object>("Best F0:", new CopyableLabel(candidate.getOptF0() + " +/- " + candidate.getOptF0Err())));
 			table.getItems().add(new Pair<String, Object>("Input F1:", candidate.getUserF1()));
 			table.getItems().add(
-					new Pair<String, Object>("Best F1:", candidate.getOptF1() + " +/- " + candidate.getOptF1Err()));
+					new Pair<String, Object>("Best F1:", new CopyableLabel(candidate.getOptF1() + " +/- " + candidate.getOptF1Err())));
 			table.getItems().add(new Pair<String, Object>("Input Acc:", candidate.getUserAcc()));
 			table.getItems().add(
-					new Pair<String, Object>("Best Acc:", candidate.getOptAcc() + " +/- " + candidate.getOptAccErr()));
+					new Pair<String, Object>("Best Acc:", new CopyableLabel(candidate.getOptAcc() + " +/- " + candidate.getOptAccErr())));
 			table.getItems().add(new Pair<String, Object>("Input DM:", candidate.getUserDM()));
 			table.getItems().add(
-					new Pair<String, Object>("Best DM: ", candidate.getOptDM() + " +/- " + candidate.getOptDMErr()));
+					new Pair<String, Object>("Best DM: ", new CopyableLabel(candidate.getOptDM() + " +/- " + candidate.getOptDMErr())));
 
-			table.getItems().add(new Pair<String, Object>("Epoch of F0:", candidate.getPeopoch()));
-			table.getItems().add(new Pair<String, Object>("Max DM (YMW16):", candidate.getMaxDMYMW16()));
+			table.getItems().add(new Pair<String, Object>("Epoch of F0:", new CopyableLabel(candidate.getPeopoch())));
+			table.getItems().add(new Pair<String, Object>("Max DM (YMW16):", new CopyableLabel(candidate.getMaxDMYMW16())));
 			table.getItems()
-			.add(new Pair<String, Object>("Max Distance (YMW16):", candidate.getDistYMW16()));
+			.add(new Pair<String, Object>("Max Distance (YMW16):", new CopyableLabel(candidate.getDistYMW16())));
 
-			table.getItems().add(new Pair<String, Object>("PNG path:", candidate.getPngFilePath()));
-			table.getItems().add(new Pair<String, Object>("Metafile path:", candidate.getMetaFilePath()));
-			table.getItems().add(new Pair<String, Object>("Filterbank path:", candidate.getFilterbankPath()));
-			table.getItems().add(new Pair<String, Object>("Tarball path:", candidate.getTarballPath()));
+			table.getItems().add(new Pair<String, Object>("PNG path:", new CopyableLabel(candidate.getPngFilePath())));
+			table.getItems().add(new Pair<String, Object>("Metafile path:", new CopyableLabel(candidate.getMetaFilePath())));
+			table.getItems().add(new Pair<String, Object>("Filterbank path:", new CopyableLabel(candidate.getFilterbankPath())));
+			table.getItems().add(new Pair<String, Object>("Tarball path:", new CopyableLabel(candidate.getTarballPath())));
 
 
 		} else {
@@ -907,6 +919,8 @@ public class CandyJar extends Application implements Constants {
 			return link;
 
 		}).collect(Collectors.toList()));
+		if(similarCandidateVBox.getChildren().isEmpty()) similarCandidateVBox.getChildren().add(new Label("None"));
+		
 		table.getItems().add(new Pair<String, Object>("Likely related candidates:" , similarCandidateVBox));
 
 		if(pulsarsInBeam != null && !pulsarsInBeam.isEmpty()) {
@@ -927,7 +941,7 @@ public class CandyJar extends Application implements Constants {
 //		table.getItems().add(new Pair<String, Object>("dspsr Predictor file", ""));
 		
 		boolean addAcc = false;
-		if(candidate.getOptAcc() / candidate.getOptAccErr() > 2 ) addAcc = true;
+		if(Math.abs(candidate.getOptAcc() / candidate.getOptAccErr()) > 2 ) addAcc = true;
 		
 
 		
@@ -1010,19 +1024,19 @@ public class CandyJar extends Application implements Constants {
 			tab.setText(pulsar.getName());
 
 			final TableView<Pair<String, Object>> table = new TableView<>();
-			table.getItems().add(new Pair<String, Object>("RA:", pulsar.getRa().toHHMMSS()));
-			table.getItems().add(new Pair<String, Object>("DEC:", pulsar.getDec().toHHMMSS()));
-			table.getItems().add(new Pair<String, Object>("DM:", pulsar.getDm().toString()));
-			table.getItems().add(new Pair<String, Object>("P0:", pulsar.getP0().toString()));
-			table.getItems().add(new Pair<String, Object>("F0:", pulsar.getF0().toString()));
+			table.getItems().add(new Pair<String, Object>("RA:", new CopyableLabel(pulsar.getRa().toHHMMSS())));
+			table.getItems().add(new Pair<String, Object>("DEC:", new CopyableLabel(pulsar.getDec().toHHMMSS())));
+			table.getItems().add(new Pair<String, Object>("DM:",new CopyableLabel(pulsar.getDm().toString())));
+			table.getItems().add(new Pair<String, Object>("P0:", new CopyableLabel(pulsar.getP0().toString())));
+			table.getItems().add(new Pair<String, Object>("F0:", new CopyableLabel(pulsar.getF0().toString())));
 
 			String harmonics = "";
 			for (int h = -8; h <= 8; h++) {
 				harmonics += String.format("%.6f \n ", pulsar.getP0() * Math.pow(2, h));
 			}
 
-			table.getItems().add(new Pair<String, Object>("Harmonic periods:", harmonics));
-			table.getItems().add(new Pair<String, Object>("Eph:", pulsar.getEphemerides()));
+			table.getItems().add(new Pair<String, Object>("Harmonic periods:", new CopyableLabelArea(harmonics)));
+			table.getItems().add(new Pair<String, Object>("Eph:", new CopyableLabelArea(pulsar.getEphemerides())));
 
 			TableColumn<Pair<String, Object>, String> nameColumn = new TableColumn<>("Name");
 			TableColumn<Pair<String, Object>, Object> valueColumn = new TableColumn<>("Value");
@@ -1116,18 +1130,22 @@ public class CandyJar extends Application implements Constants {
 		candidates.clear();
 		message.setText("Loading...");
 		if(sortBox.getValue() ==null) sortBox.setValue(Candidate.DEFAULT_SORT_PARAMETER);
+		if(!ascendingButton.isSelected() && !descendingButton.isSelected()) descendingButton.setSelected(true);
 
 		List<Candidate> candidatesForUTC = fullCandiatesList.stream().filter(f-> f.getStartUTC().equals(utc)).collect(Collectors.toList());
-
-		candidates.addAll(candidatesForUTC.stream()
+		Function<Candidate, Double> fn = Candidate.SORTABLE_PARAMETERS_MAP.get(sortBox.getValue());
+		
+		List<Candidate> sortedCands = candidatesForUTC.stream()
 				.filter(f -> f.getStartUTC().equals(utc) && types.contains(f.getCandidateType()) && f.isVisible())
 				.sorted(Comparator.comparing(f -> {
-					Double result = Candidate.SORTABLE_PARAMETERS_MAP.get(sortBox.getValue()).apply((Candidate) f);
+					Double result = fn.apply((Candidate) f);
 					if (result == null) result = 0.0;
 					return result;
-				})
-				.reversed())
-				.collect(Collectors.toList()));
+				})).collect(Collectors.toList());
+		
+		if(descendingButton.isSelected()) Collections.reverse(sortedCands);
+		
+		candidates.addAll(sortedCands);
 
 
 
