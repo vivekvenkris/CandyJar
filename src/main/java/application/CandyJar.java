@@ -850,13 +850,13 @@ public class CandyJar extends Application implements Constants {
 			table.getItems().add(new Pair<String, Object>("Input F0:", new CopyableLabel(candidate.getUserF0())));
 			table.getItems().add(
 					new Pair<String, Object>("Best F0:", new CopyableLabel(candidate.getOptF0() + " +/- " + candidate.getOptF0Err())));
-			table.getItems().add(new Pair<String, Object>("Input F1:", candidate.getUserF1()));
+			table.getItems().add(new Pair<String, Object>("Input F1:", new CopyableLabel(candidate.getUserF1())));
 			table.getItems().add(
 					new Pair<String, Object>("Best F1:", new CopyableLabel(candidate.getOptF1() + " +/- " + candidate.getOptF1Err())));
-			table.getItems().add(new Pair<String, Object>("Input Acc:", candidate.getUserAcc()));
+			table.getItems().add(new Pair<String, Object>("Input Acc:", new CopyableLabel(candidate.getUserAcc())));
 			table.getItems().add(
 					new Pair<String, Object>("Best Acc:", new CopyableLabel(candidate.getOptAcc() + " +/- " + candidate.getOptAccErr())));
-			table.getItems().add(new Pair<String, Object>("Input DM:", candidate.getUserDM()));
+			table.getItems().add(new Pair<String, Object>("Input DM:", new CopyableLabel(candidate.getUserDM())));
 			table.getItems().add(
 					new Pair<String, Object>("Best DM: ", new CopyableLabel(candidate.getOptDM() + " +/- " + candidate.getOptDMErr())));
 
