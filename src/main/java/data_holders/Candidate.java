@@ -3,17 +3,16 @@ package data_holders;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
 import constants.Constants;
+import data_holders.Candidate.CANDIDATE_TYPE;
 import de.gsi.chart.marker.DefaultMarker;
 import de.gsi.chart.marker.Marker;
 import de.gsi.dataset.spi.utils.Tuple;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import utilitites.Utilities;
@@ -88,8 +87,10 @@ public class Candidate {
 	public String getLineNum() {
 		return lineNum;
 	}
-
-
+	// just for sorting
+	public Double getLineNumDouble() {
+		return Integer.parseInt(lineNum) + 0.0;
+	}
 
 
 	public void setLineNum(String lineNum) {
@@ -565,10 +566,6 @@ public class Candidate {
 		return Beam.getIntegerBeamName(getBeamName()).doubleValue();
 	}
 	
-	
-	
-
-	
 	public MetaFile getMetaFile() {
 		return metaFile;
 	}
@@ -576,6 +573,16 @@ public class Candidate {
 
 	public void setMetaFile(MetaFile metaFile) {
 		this.metaFile = metaFile;
+	}
+	
+	public double getAngleFromBoresight() {
+		if(this.beam == null || this.metaFile == null) return -1;
+		Beam boresight = metaFile.getBoresight();
+		return Utilities.getAngularDistance(beam, boresight).getDegreeValue();
+	}
+	
+	public Tuple<Double, Double> getAngleFromBoresightTuple() {
+		return new Tuple<Double, Double>(getAngleFromBoresight(),null);
 	}
 
 
@@ -611,6 +618,9 @@ public class Candidate {
 		sortableValuesMap.put("PICS_TRAPUM", Candidate::getPicsScoreTrapum);
 		sortableValuesMap.put("PICS_PALFA", Candidate::getPicsScorePALFA);
 		sortableValuesMap.put("BEAM_NUM", Candidate::getBeamNumber);
+		sortableValuesMap.put("BORESIGHT_ANG_DIST", Candidate::getAngleFromBoresight);
+		sortableValuesMap.put("CSV_LINE", Candidate::getLineNumDouble);
+
 		return sortableValuesMap;
 	}
 
@@ -631,6 +641,7 @@ public class Candidate {
 		plottableValuesMap.put("BEAM_NUM", Candidate::getBeamNumberTuple);
 		plottableValuesMap.put("RA", Candidate::getRaTuple);
 		plottableValuesMap.put("DEC", Candidate::getDecTuple);
+		plottableValuesMap.put("BORESIGHT_ANG_DIST", Candidate::getAngleFromBoresightTuple);
 
 		return plottableValuesMap;
 	}
@@ -650,6 +661,8 @@ public class Candidate {
 		unitsMap.put("BEAM_NUM", null);
 		unitsMap.put("RA", "hours");
 		unitsMap.put("DEC", "degrees");
+		unitsMap.put("BORESIGHT_ANG_DIST", "degrees");
+		
 		
 		return unitsMap;
 		
