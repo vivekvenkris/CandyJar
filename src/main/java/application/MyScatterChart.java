@@ -85,7 +85,7 @@ public class MyScatterChart extends ScatterChart<Number, Number> {
 					
 					Beam b = (Beam) d.getExtraValue();
 					
-					if (b.getName().contains("ifbf"))continue;
+					if ( b == null || b.getName() == null || b.getName().contains("ifbf"))continue;
 					
 
 					
