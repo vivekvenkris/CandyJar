@@ -67,7 +67,6 @@ import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
-import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.chart.NumberAxis;
@@ -87,7 +86,6 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.ToggleButton;
-import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -243,6 +241,17 @@ public class CandyJar extends Application implements Constants {
 	ChartViewer chartViewer = null;
 
 	public void initialise() {
+		
+		beamMapChart.init();
+	
+		utcs.clear();
+		utcBox.getSelectionModel().clearSelection();
+		utcBox.valueProperty().set(null);
+		utcBox.getItems().clear();
+		beamMapChart.getData().clear();
+		
+		fullCandiatesList.clear();
+		
 		filterTypes.setTitle("FILTER_TYPE");
 		utcBox.setPromptText("SELECT_UTC");
 		sortBox.setPromptText("SORT_BY");
@@ -252,28 +261,6 @@ public class CandyJar extends Application implements Constants {
 		sortBox.setTooltip(new Tooltip("Select value to sort by and the order"));
 
 
-		beamMapChart.setCursor(Cursor.CROSSHAIR);
-		beamMapChart.setAlternativeRowFillVisible(true);
-		beamMapChart.setAnimated(false);
-		beamMapChart.setLegendVisible(false);
-		beamMapChart.getData().clear();
-		beamMapChart.setLegendVisible(false);
-		beamMapChart.setAnimated(false);
-		beamMapChart.setVerticalZeroLineVisible(false);
-
-
-		beamMapXAxis.setAutoRanging(false);
-		beamMapYAxis.setAutoRanging(false);
-
-		beamMapXAxis.setForceZeroInRange(false);
-		beamMapYAxis.setForceZeroInRange(false);
-
-		beamMapXAxis.setAnimated(false);
-		beamMapYAxis.setAnimated(false);
-
-		beamMapXAxis.setTickLabelFormatter(AppUtils.raStringConverter);
-
-		beamMapYAxis.setTickLabelFormatter(AppUtils.decStringConverter);
 
 		filterTypes.getCheckModel().getCheckedItems().addListener(new ListChangeListener<CANDIDATE_TYPE>() {
 			public void onChanged(ListChangeListener.Change<? extends CANDIDATE_TYPE> c) {
@@ -285,7 +272,6 @@ public class CandyJar extends Application implements Constants {
 
 		//candidateCategories.getButtons().addAll(rfi, noise, tier1, tier2, knownPulsar);
 		candidateCategories.getStyleClass().add(SegmentedButton.STYLE_CLASS_DARK);
-
 		loadClassification.setVisible(false);
 		utcBox.setVisible(false);
 		beamMapChart.setVisible(false);
@@ -293,11 +279,14 @@ public class CandyJar extends Application implements Constants {
 		sortBox.setVisible(false);
 		actionsBox.setVisible(false);
 		sortOrder.setVisible(false);
-
+		infoPane.getTabs().clear();
+		imageView.setVisible(false);
 		gotoCandidate.getTextField().setPromptText("Go to Candidate");
 
 
 		message.setTextFill(Paint.valueOf("darkred"));
+		
+		if(chartViewer != null && chartViewer.isShowing()) chartViewer.close();
 
 		chartViewer = secondaryScreenBounds!=null? new ChartViewer(secondaryScreenBounds, numCharts, this): null;
 	}
@@ -335,7 +324,9 @@ public class CandyJar extends Application implements Constants {
 		fileSelectButton.setOnAction(e -> {
 			File selectedDirectory = directoryChooser.showDialog(stage);
 			if(selectedDirectory ==null) return;
+			initialise();
 			rootDirTB.getTextField().setText(selectedDirectory.getAbsolutePath());
+			
 		});
 
 		rootDirTB.getButton().setOnAction(new EventHandler<ActionEvent>() {
@@ -348,14 +339,13 @@ public class CandyJar extends Application implements Constants {
 					return;
 				}
 
-				System.err.println("Loading new root directory" + rootDirTB.getTextField().getText());
+				System.err.println("Loading new root directory: " + rootDirTB.getTextField().getText());
 				baseDir = new File(rootDirTB.getTextField().getText());
 
 				String csv = baseDir.getAbsolutePath() + File.separator + Constants.CSV_FILE_NAME;
 
 
-				beamMapChart.getData().clear();
-				utcs.clear();
+
 				imageCounter = 0;
 				utcBox.setVisible(true);
 				loadClassification.setVisible(true);
@@ -365,11 +355,11 @@ public class CandyJar extends Application implements Constants {
 
 					utcs.addAll(fullCandiatesList.stream().map(f -> f.getStartUTC()).collect(Collectors.toSet()));
 
-					utcBox.getItems().clear();
 					utcBox.setItems(FXCollections.observableArrayList(utcs.stream()
 							.map(f -> Utilities.getUTCString(f, commonUTCFormat)).collect(Collectors.toList())));
 
 					for(LocalDateTime utc: utcs) { 
+						System.err.println("utc: "+ utc);
 						String utcString = Utilities.getUTCString(utc, DateTimeFormatter.ISO_DATE_TIME);
 						List<Candidate> candidatesPerUtc = fullCandiatesList.stream().filter(f -> f.getStartUTC().equals(utc)).collect(Collectors.toList());
 						candidateMap.put(utcString, candidatesPerUtc);
@@ -404,6 +394,16 @@ public class CandyJar extends Application implements Constants {
 
 			@Override
 			public void handle(ActionEvent event) {
+				
+				String utcString = utcBox.getValue();
+				if (utcString == null) {
+					System.err.println("utc value not set");
+					return;
+
+					
+				}
+
+				
 				// images.clear();
 				candidates.stream().forEach(f-> f.setImage(null));
 				candidates.clear();
@@ -417,10 +417,7 @@ public class CandyJar extends Application implements Constants {
 				sortOrder.setVisible(true);
 				candidatesVisible = false;
 
-				String utcString = utcBox.getValue();
-				if (utcString == null)
-					return;
-
+				
 				System.err.println("UTC:" + utcString);
 
 				LocalDateTime utc = Utilities.getUTCLocalDateTime(utcString, Constants.commonUTCFormat);
