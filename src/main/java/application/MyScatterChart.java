@@ -14,6 +14,7 @@ import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.NodeOrientation;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.chart.Axis;
 import javafx.scene.chart.NumberAxis;
@@ -26,6 +27,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.transform.Rotate;
 import javafx.util.Duration;
+import utilitites.AppUtils;
 
 public class MyScatterChart extends ScatterChart<Number, Number> {
 	private final List<Node> ellipseList = new ArrayList<Node>();
@@ -38,6 +40,40 @@ public class MyScatterChart extends ScatterChart<Number, Number> {
 
 	public MyScatterChart(Axis<Number> xAxis, Axis<Number> yAxis) {
 		super(xAxis, yAxis);
+	}
+	
+	public void init() {
+		MyScatterChart beamMapChart = this;
+		
+		
+		beamMapChart.getData().clear();
+		
+		beamMapChart.setCursor(Cursor.CROSSHAIR);
+		beamMapChart.setAlternativeRowFillVisible(true);
+		beamMapChart.setAnimated(false);
+		beamMapChart.setLegendVisible(false);
+		beamMapChart.getData().clear();
+		beamMapChart.setLegendVisible(false);
+		beamMapChart.setAnimated(false);
+		beamMapChart.setVerticalZeroLineVisible(false);
+		
+		NumberAxis beamMapXAxis = (NumberAxis) this.getXAxis();
+		NumberAxis beamMapYAxis = (NumberAxis) this.getYAxis();
+		
+		
+		beamMapXAxis.setAutoRanging(false);
+		beamMapYAxis.setAutoRanging(false);
+
+		beamMapXAxis.setForceZeroInRange(false);
+		beamMapYAxis.setForceZeroInRange(false);
+
+		beamMapXAxis.setAnimated(false);
+		beamMapYAxis.setAnimated(false);
+
+		beamMapXAxis.setTickLabelFormatter(AppUtils.raStringConverter);
+
+		beamMapYAxis.setTickLabelFormatter(AppUtils.decStringConverter);
+		
 	}
 
 	@Override
