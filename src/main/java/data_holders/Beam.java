@@ -10,9 +10,10 @@ public class Beam {
 	private String coordinates;
 	private Angle ra;
 	private Angle dec;
+	private Angle raPixel;
+	private Angle decPixel;
 	private EllipseConfig ellipseConfig;
 	List<Beam> neighbourBeams;
-	
 	private Integer integerBeamName;
 	
 	
@@ -57,17 +58,12 @@ public class Beam {
 		
 	}
 	public Beam(String name, String csv, EllipseConfig ellipseConfig) {
-		this();
-		String[] chunks = csv.split(",");
-		this.name = name;
-		this.boresightName = chunks[0];
-		this.coordinates = chunks[1];
-		this.ra = new Angle(chunks[2].strip(), Angle.HHMMSS);
-		this.dec = new Angle(chunks[3].strip(), Angle.DDMMSS);
+		this(name, csv);
 		this.ellipseConfig = ellipseConfig;
-		this.integerBeamName = Beam.getIntegerBeamName(this.name);
 		
 	}
+	
+
 	
 	public String getCoordString() {
 		return ra.toHHMMSS() + " " + dec.toDDMMSS(); 
@@ -147,6 +143,23 @@ public class Beam {
 	public void setIntegerBeamName(Integer integerBeamName) {
 		this.integerBeamName = integerBeamName;
 	}
+
+	public Angle getRaPixel() {
+		return raPixel;
+	}
+
+	public void setRaPixel(Angle raPixel) {
+		this.raPixel = raPixel;
+	}
+
+	public Angle getDecPixel() {
+		return decPixel;
+	}
+
+	public void setDecPixel(Angle decPixel) {
+		this.decPixel = decPixel;
+	}
+
 	
 
 }
