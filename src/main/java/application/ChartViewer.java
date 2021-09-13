@@ -476,9 +476,7 @@ public class ChartViewer {
 						pointsMarker.getClassifyBox().setPromptText("CLASSIFY_AS");
 						
 					}
-				});
-			
-			 
+				});	
 		
 			 
 
