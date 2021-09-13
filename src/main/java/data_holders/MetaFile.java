@@ -2,12 +2,8 @@ package data_holders;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
-
-import utilitites.Utilities;
 
 public class MetaFile {
 	
@@ -57,6 +53,8 @@ public class MetaFile {
 		return s;
 	}
 	
+
+	
 	public static double getBeamIntersection(Beam b1, Beam b2) {
 		double xMean = b1.getRa().getRadianValue();
 		double yMean = b1.getDec().getRadianValue();
@@ -73,38 +71,28 @@ public class MetaFile {
 	}
 	
 
-	public void findNeighbours() {
-		
+	public void findNeighbours() {	
 
 		for(Beam b1: beams.values()) {
 			
 				Map<Beam, Double> beamResponses = new HashMap<Beam, Double>();
 			
-			for(Beam b2: beams.values()) {
+				for(Beam b2: beams.values()) {
+					
+					if(b1.equals(b2)) continue;
+					beamResponses.putIfAbsent(b2, getBeamIntersection(b1, b2));
+					
+				}
 				
-				if(b1.equals(b2)) continue;
+			    b1.addNeighbours(
+			    		beamResponses.entrySet().stream()
+			    								.sorted(Map.Entry.comparingByValue())
+			    								.collect(Collectors.toList())
+			    								.subList(0, 6).stream()
+			    								.map(f -> f.getKey())
+			    								.collect(Collectors.toList())
+			    				);
 				
-//				double xMean = b1.getRa().getRadianValue();
-//				double yMean = b1.getDec().getRadianValue();
-//				double x = b2.getRa().getRadianValue();
-//				double y = b2.getDec().getRadianValue();				
-//				double angle = b2.getEllipseConfig().getBeamAngle().getRadianValue() - Math.PI;
-//				double xSigma = b2.getEllipseConfig().getBeamX().getRadianValue();
-//				double ySigma = b2.getEllipseConfig().getBeamY().getRadianValue();
-//				double a = Math.cos(angle) * Math.cos(angle) /  (2 * xSigma * xSigma)  + Math.sin(angle) * Math.sin(angle) / (2 * ySigma * ySigma);
-//				double b  = - Math.sin(2 * angle) / (4 * xSigma * xSigma) + Math.sin(2 * angle) / (4 * ySigma * ySigma);
-//				double c = Math.sin(angle) * Math.sin(angle) /  (2 * xSigma * xSigma)  + Math.cos(angle) * Math.cos(angle) / (2 * ySigma * ySigma);
-//				double d = a  * Math.pow(x - xMean, 2) + 2 * b  * (x - xMean) * (y - yMean) + c * Math.pow(y - yMean, 2);
-				beamResponses.putIfAbsent(b2, getBeamIntersection(b1, b2));
-				
-			}
-			
-		    b1.addNeighbours(
-		    		beamResponses.entrySet().stream()
-		    								.sorted(Map.Entry.comparingByValue())
-		    								.collect(Collectors.toList()).subList(0, 6).stream().map(f -> f.getKey())
-		    								.collect(Collectors.toList()));
-			
 		}
 		
 	}
