@@ -129,10 +129,10 @@ public class MyScatterChart extends ScatterChart<Number, Number> {
 					double radiusY = b.getEllipseConfig().getBeamY().getDegreeValue() * yScale;
 
 					
-					Ellipse e = new Ellipse(x1,y1, radiusY, radiusX );
+					Ellipse e = new Ellipse(x1,y1, radiusX, radiusY );
 					
 					Rotate rotate = new Rotate();
-					rotate.setAngle(b.getEllipseConfig().getBeamAngle().getDegreeValue());
+					rotate.setAngle(360 - b.getEllipseConfig().getBeamAngle().getDegreeValue());
 					rotate.setPivotX(x1);
 					rotate.setPivotY(y1);
 					
