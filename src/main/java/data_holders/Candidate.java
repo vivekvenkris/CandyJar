@@ -682,7 +682,8 @@ public class Candidate {
 		T2_CAND,
 		RFI, 
 		NOISE,
-		UNCAT;
+		UNCAT,
+		NB_PSR;
 	}
 	
 	
