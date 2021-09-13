@@ -174,15 +174,18 @@ public class CandyJar extends Application implements Constants {
 	final Button next = new Button("Next (d)");
 	final LabelWithTextAndButton gotoCandidate = new LabelWithTextAndButton("Go to", "", "Go");
 	final Label counterLabel = new Label();
-
+	
 	final ToggleButton rfi = new ToggleButton("RFI (y)");
 	final ToggleButton noise = new ToggleButton("Noise (u)");
 	final ToggleButton tier1 = new ToggleButton("Tier1 (i)");
 	final ToggleButton tier2 = new ToggleButton("Tier2 (o)");
 	final ToggleButton knownPulsar = new ToggleButton("Known pulsar (p)");
+	final ToggleButton nbPulsar = new ToggleButton("NB pulsar (l)");
 	final ToggleButton reset = new ToggleButton("Uncat (r)");
 
-	final SegmentedButton candidateCategories = new SegmentedButton(FXCollections.observableArrayList(Arrays.asList(new ToggleButton[] {rfi, noise, tier1, tier2, knownPulsar, reset})));
+	final SegmentedButton candidateCategories = 
+			new SegmentedButton(FXCollections.observableArrayList(
+					Arrays.asList(new ToggleButton[] {rfi, noise, tier1, tier2, knownPulsar, nbPulsar, reset})));
 	final Label message = new Label("All ok. Select a directory");
 
 	final Button saveClassification = new Button("Save classification");
@@ -619,7 +622,16 @@ public class CandyJar extends Application implements Constants {
 
 			}
 		});
-		
+		nbPulsar.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				if(! candidatesVisible) return;
+				candidates.get(imageCounter).setCandidateType(CANDIDATE_TYPE.NB_PSR);
+				progress();
+
+			}
+		});
 		reset.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
@@ -785,13 +797,20 @@ public class CandyJar extends Application implements Constants {
 		XYChart.Series<Number, Number> beamPositions = new XYChart.Series<Number, Number>();
 		beamPositions.setName(Constants.DEFAULT_BEAM_MAP);
 
+//		for (Entry<String, Beam> e : metaFile.getBeams().entrySet()) {
+//			Beam b = e.getValue();
+//			Point2D.Double p = CoordUtils.getPixelCoordinates(metaFile.getBoresight(), b);
+//			Data<Number, Number> d = new Data<Number, Number>(b.getRaPixel().getDecimalHourValue(), b.getDecPixel().getDegreeValue());
+//			d.setExtraValue(b);
+//			beamPositions.getData().add(d);
+//		}
 		for (Entry<String, Beam> e : metaFile.getBeams().entrySet()) {
-			Data<Number, Number> d = new Data<Number, Number>(e.getValue().getRa().getDecimalHourValue(),
-					e.getValue().getDec().getDegreeValue());
 			Beam b = e.getValue();
+			Data<Number, Number> d = new Data<Number, Number>(b.getRa().getDecimalHourValue(), b.getDec().getDegreeValue());
 			d.setExtraValue(b);
 			beamPositions.getData().add(d);
 		}
+
 
 		XYChart.Series<Number, Number> pulsarPositions = new XYChart.Series<Number, Number>();
 
@@ -952,7 +971,7 @@ public class CandyJar extends Application implements Constants {
 		prepfoldTextGen +=	" -o " + outputStr + " " + candidate.getFilterbankPath();			 
 						
 		String pulsarxTextGen = "psrfold_fil -v -t 4 --template /home/psr/software/PulsarX/include/template/meerkat_fold.template "
-				+ "-L 10 --clfd 2.0 -z zdot -z kadaneF 8 4 -n 64 -b 64 -dspsr -plotx -dm " + candidate.getOptDM() + " -f0 " + + candidate.getOptF0();		
+				+ "-L 10 --clfd 2.0 -z zdot -n 64 -b 64 --dspsr --plotx --dm " + candidate.getOptDM() + " --f0 " + + candidate.getOptF0();		
 		if(addAcc)		pulsarxTextGen+= " -acc " + candidate.getOptAcc();		
 		pulsarxTextGen+= " -o " + outputStr + " -f" + candidate.getFilterbankPath() ;
 		
@@ -1022,7 +1041,7 @@ public class CandyJar extends Application implements Constants {
 
 			final TableView<Pair<String, Object>> table = new TableView<>();
 			table.getItems().add(new Pair<String, Object>("RA:", new CopyableLabel(pulsar.getRa().toHHMMSS())));
-			table.getItems().add(new Pair<String, Object>("DEC:", new CopyableLabel(pulsar.getDec().toHHMMSS())));
+			table.getItems().add(new Pair<String, Object>("DEC:", new CopyableLabel(pulsar.getDec().toDDMMSS())));
 			table.getItems().add(new Pair<String, Object>("DM:",new CopyableLabel(pulsar.getDm().toString())));
 			table.getItems().add(new Pair<String, Object>("P0:", new CopyableLabel(pulsar.getP0().toString())));
 			table.getItems().add(new Pair<String, Object>("F0:", new CopyableLabel(pulsar.getF0().toString())));
@@ -1098,6 +1117,9 @@ public class CandyJar extends Application implements Constants {
 
 			case P:
 				knownPulsar.fire();
+				break;
+			case L:
+				nbPulsar.fire();
 				break;
 			case R:
 				reset.fire();
@@ -1207,6 +1229,7 @@ public class CandyJar extends Application implements Constants {
 		tier2.setSelected(false);
 		rfi.setSelected(false);
 		knownPulsar.setSelected(false);
+		nbPulsar.setSelected(false);
 		noise.setSelected(false);
 		reset.setSelected(true);
 
@@ -1255,6 +1278,9 @@ public class CandyJar extends Application implements Constants {
 		case KNOWN_PSR:
 			knownPulsar.setSelected(true);
 			break;
+		case NB_PSR:
+			nbPulsar.setSelected(true);
+			break;			
 		case NOISE:
 			noise.setSelected(true);
 			break;
@@ -1365,7 +1391,7 @@ public class CandyJar extends Application implements Constants {
 		List<String> list = new ArrayList<String>();
 		list.add("utc,png,classification");
 		for (Candidate candidate : fullCandiatesList)
-			list.add(candidate.getUtcString() + Constants.CSV_SEPARATOR + candidate.getPngFilePath()
+			list.add(candidate.getBeamID() + Constants.CSV_SEPARATOR  + candidate.getUtcString() + Constants.CSV_SEPARATOR + candidate.getPngFilePath()
 			+ Constants.CSV_SEPARATOR + candidate.getCandidateType());
 
 		try {
