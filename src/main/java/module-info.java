@@ -16,6 +16,7 @@ module candyjar {
 	requires  commons.io;
 	requires  commons.cli;
 	requires org.slf4j;
+	requires jsky;
 	
     
     opens application to javafx.fxml;
