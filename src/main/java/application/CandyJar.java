@@ -1428,11 +1428,11 @@ public class CandyJar extends Application implements Constants {
 
 					String[] chunks = lines.get(0).split(",");
 					
-					if(chunks.length == 3) {
+					if(chunks.length == 3) { // old format without beam id
 						candidate.setCandidateType(CANDIDATE_TYPE.valueOf(chunks[2]));
 
 					}
-					else if(chunks.length == 4) {
+					else if(chunks.length == 4) { // new format with beam id
 						candidate.setCandidateType(CANDIDATE_TYPE.valueOf(chunks[3]));
 
 					}
