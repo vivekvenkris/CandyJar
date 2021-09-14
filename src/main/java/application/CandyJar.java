@@ -1033,6 +1033,7 @@ public class CandyJar extends Application implements Constants {
 	}
 
 	public void populatePulsarTabs(TabPane tabPane) {
+		
 
 		for (Pulsar pulsar : pulsarsInBeam) {
 
@@ -1042,6 +1043,11 @@ public class CandyJar extends Application implements Constants {
 			final TableView<Pair<String, Object>> table = new TableView<>();
 			table.getItems().add(new Pair<String, Object>("RA:", new CopyableLabel(pulsar.getRa().toHHMMSS())));
 			table.getItems().add(new Pair<String, Object>("DEC:", new CopyableLabel(pulsar.getDec().toDDMMSS())));
+			
+			double distance = Utilities.getAngularDistance(pulsar, metaFile.getBoresight()); 
+			table.getItems().add(new Pair<String, Object>("Angular distance from Boresight:",
+					new CopyableLabel(distance + " deg = " + distance*3600+"\"")));
+			
 			table.getItems().add(new Pair<String, Object>("DM:",new CopyableLabel(pulsar.getDm().toString())));
 			table.getItems().add(new Pair<String, Object>("P0:", new CopyableLabel(pulsar.getP0().toString())));
 			table.getItems().add(new Pair<String, Object>("F0:", new CopyableLabel(pulsar.getF0().toString())));
@@ -1421,12 +1427,19 @@ public class CandyJar extends Application implements Constants {
 				else {
 
 					String[] chunks = lines.get(0).split(",");
-					if (chunks.length != 3) {
-						message.setText("Loaded classification contains invalid format, see console for more details");
-						System.err.println("Invalid format in line: " + lines + "");
+					
+					if(chunks.length == 3) {
+						candidate.setCandidateType(CANDIDATE_TYPE.valueOf(chunks[2]));
 
 					}
-					candidate.setCandidateType(CANDIDATE_TYPE.valueOf(chunks[2]));
+					else if(chunks.length == 4) {
+						candidate.setCandidateType(CANDIDATE_TYPE.valueOf(chunks[3]));
+
+					}
+					else {
+						message.setText("Loaded classification contains invalid format, see console for more details");
+						System.err.println("Invalid format in line: " + lines + "");
+					}
 
 				}
 
