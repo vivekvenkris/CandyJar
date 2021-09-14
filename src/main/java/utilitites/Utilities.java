@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import constants.Constants;
 import data_holders.Angle;
 import data_holders.Beam;
+import data_holders.Pulsar;
 import de.gsi.dataset.spi.utils.Tuple;
 
 public class Utilities {
@@ -31,6 +32,10 @@ public class Utilities {
 		
 		return 2 * Math.asin(Math.sqrt(firstTerm + secondTerm));
 		
+	}
+	
+	public static double getAngularDistance(Pulsar pulsar, Beam b) {
+		return getAngularDistance(pulsar.getRa().getRadianValue(), pulsar.getDec().getRadianValue(), b.getRa().getRadianValue(), b.getDec().getRadianValue());
 	}
 	
 	public static boolean isWithinEllipse(double x1, double y1, double x2, double y2, double a, double b){
