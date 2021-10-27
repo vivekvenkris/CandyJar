@@ -94,7 +94,7 @@ dependencies {
 	implementation (group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.0-alpha1')
 
 	implementation (group: 'org.slf4j', name: 'slf4j-api', version: '2.0.0-alpha1')
-
+	implementation (group: 'org.webjars', name: 'font-awesome', version: '5.13.0')
 	
 
 }
@@ -110,16 +110,14 @@ application {
             "--add-opens=javafx.controls/com.sun.javafx.scene.control.behavior=org.controlsfx.controls",
             "--add-opens=javafx.controls/javafx.scene.control.skin=org.controlsfx.controls",
             "--add-opens=javafx.controls/com.sun.javafx.scene.control.inputmap=org.controlsfx.controls",
+            "--add-opens=javafx.graphics/com.sun.javafx.css=org.controlsfx.controls",
             "-Xms512m", 
-            "-Xmx1024m"
-            
-            
+            "-Xmx1024m",
+
             
     ]
     //mainClassName = project.findProperty("chooseMain").toString()
 }
 
-
-
-
+// if at some point this stupid --add-opens hack does not work, try by adding --add-exports for all the packages. 
 
