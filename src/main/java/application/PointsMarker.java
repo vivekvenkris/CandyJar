@@ -29,6 +29,8 @@ public class PointsMarker extends Zoomer{
     private Button shortlistResetButton;
     private Button filterResetButton;
     
+    private HBox toolBar;
+    
 	private ComboBox<CANDIDATE_TYPE> classifyBox;
 
     public PointsMarker() {
@@ -42,6 +44,13 @@ public class PointsMarker extends Zoomer{
     
     public PointsMarker(final AxisMode zoomMode, final boolean animated) {
     	super(zoomMode, animated);
+    }
+    
+    public void resetClassificationBox() {
+    	toolBar.getChildren().remove(classifyBox);
+        classifyBox = new ComboBox<CANDIDATE_TYPE>(FXCollections.observableArrayList(Arrays.asList(CANDIDATE_TYPE.values())));
+        classifyBox.setPromptText("CLASSIFY_AS");
+    	toolBar.getChildren().add(classifyBox);
     }
     
     public HBox getCustomToolBar() {
@@ -74,8 +83,8 @@ public class PointsMarker extends Zoomer{
         
         filterResetButton.setPadding(new Insets(3, 3, 3, 3));
         filterResetButton.setTooltip(new Tooltip("Reset filters"));
-        
-        return new HBox(separator1, shortlistButton, shortlistResetButton, separator2, filterButton, filterResetButton, separator3, classifyBox);
+        toolBar = new HBox(separator1, shortlistButton, shortlistResetButton, separator2, filterButton, filterResetButton, separator3, classifyBox);
+        return toolBar;
     }
     
     @Override
