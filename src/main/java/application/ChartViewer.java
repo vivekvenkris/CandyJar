@@ -39,6 +39,8 @@ import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Rectangle2D;
+import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -46,8 +48,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.SplitPane;
+import javafx.scene.control.Toggle;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -440,6 +446,74 @@ public class ChartViewer {
 																	e.consume(); 
 																	resetFilters();  
 																  });
+			
+			pointsMarker.getClassifyButton().setOnAction(new EventHandler<ActionEvent>() {
+				
+				@Override
+				public void handle(ActionEvent event) {
+					event.consume();
+					ToggleGroup radioGroup = new ToggleGroup();
+					Alert alert = new Alert(AlertType.CONFIRMATION);
+			
+					String classificationRange="";
+					Map<String, Tuple<Double, Double>> currentMinMaxMap = getCurrentMinMaxMap();
+					for(Entry<String,  Tuple<Double, Double>> entry : currentMinMaxMap.entrySet()) {
+						
+						classificationRange += entry.getKey() + " =" + entry.getValue().getXValue() + " to " + entry.getValue().getYValue() + "\n";
+					}
+					final String finalClassificationRange = classificationRange;
+					
+					Node graphic = alert.getDialogPane().getGraphic();
+					alert.setDialogPane(new DialogPane() {
+						@Override
+						protected Node createDetailsButton() {
+							String s = "Classify all candidates in the following bounds as: ";
+							HBox radioHBox = new HBox(10);
+							VBox vBox = new VBox(10);
+							vBox.getChildren().add(new Label(s));
+							vBox.getChildren().add(radioHBox);
+							
+							for(CANDIDATE_TYPE t : CANDIDATE_TYPE.values()) {
+								RadioButton rb = new RadioButton(t.toString());
+								rb.setToggleGroup(radioGroup);	
+								rb.setUserData(t);
+								radioHBox.getChildren().add(rb);
+
+							}
+							vBox.getChildren().add(new Label(finalClassificationRange));
+							
+
+							return vBox;
+						}
+						
+					});
+										
+					
+						
+					alert.setTitle("Classify as");
+					alert.getDialogPane().setExpandableContent(new Group());
+				    alert.getDialogPane().setExpanded(true);
+					alert.getDialogPane().setGraphic(graphic);
+					alert.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+					Optional<ButtonType> result = alert.showAndWait();
+					
+					if(result != null && result.get() == ButtonType.OK) {
+						
+						Toggle toggle = radioGroup.getSelectedToggle();
+						
+						if(toggle != null && toggle.isSelected()) {
+							CANDIDATE_TYPE type = (CANDIDATE_TYPE) toggle.getUserData();
+							classifyCandidates(currentMinMaxMap, type);
+
+						}
+						
+						
+					}
+					
+					pointsMarker.resetClassificationBox();
+					
+				}
+			});	
 				
 			
 			pointsMarker.getClassifyBox().setOnAction(new EventHandler<ActionEvent>() {
