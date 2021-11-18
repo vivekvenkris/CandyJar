@@ -717,6 +717,8 @@ public class Candidate {
 			break;
 		case NOISE:
 			marker = DefaultMarker.RECTANGLE2;
+		case NB_PSR:
+			marker = DefaultMarker.PLUS;
 			break;
 		case UNCAT:
 			marker = DefaultMarker.CIRCLE;
@@ -743,11 +745,15 @@ public class Candidate {
 		case KNOWN_PSR:
 			color = Color.DARKVIOLET.deriveColor(0, 1, 1, 0.5);
 			break;
+		case NB_PSR:
+			color = Color.DARKVIOLET.deriveColor(0, 1, 1, 0.2);
+			break;
 		case NOISE:
 			color = Color.ROSYBROWN.deriveColor(0, 1, 1, 0.8);
 			break;
 		case UNCAT:
 			color = Color.DARKGREY.deriveColor(0, 1, 1, 0.5);
+		
 
 		}
 		return color;
