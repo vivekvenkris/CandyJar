@@ -1,5 +1,6 @@
 package data_holders;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +26,7 @@ public class MetaFile {
 	private Angle maxRa;
 	private Angle minDec;
 	private Angle maxDec;
+	private File png;
 	
 	
 	public MetaFile() {
@@ -217,6 +219,16 @@ public class MetaFile {
 	public void setMaxDec(Angle maxDec) {
 		this.maxDec = maxDec;
 	}
+
+	public File getPng() {
+		return png;
+	}
+
+	public void setPng(File png) {
+		this.png = png;
+	}
+	
+	
 	
 	
 	// old find neighbours
