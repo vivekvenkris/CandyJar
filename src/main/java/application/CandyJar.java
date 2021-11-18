@@ -53,6 +53,7 @@ import data_holders.MetaFile;
 import data_holders.Pulsar;
 import de.gsi.chart.Chart;
 import exceptions.InvalidInputException;
+import javafx.animation.Interpolator;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -65,6 +66,7 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
+import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
@@ -105,7 +107,9 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import javafx.util.Callback;
+import javafx.util.Duration;
 import javafx.util.Pair;
+import net.kurobako.gesturefx.GesturePane;
 import readers.CandidateFileReader;
 import readers.Psrcat;
 import utilitites.AppUtils;
@@ -161,6 +165,7 @@ public class CandyJar extends Application implements Constants {
 	final NumberAxis beamMapXAxis = new NumberAxis();
 	final NumberAxis beamMapYAxis = new NumberAxis();
 	final MyScatterChart beamMapChart = new MyScatterChart(beamMapXAxis, beamMapYAxis);
+	TabPane beamMapPane = new TabPane();
 	double initXLowerBound = 0, initXUpperBound = 0, initYLowerBound = 0, initYUpperBound = 0;
 
 
@@ -179,8 +184,8 @@ public class CandyJar extends Application implements Constants {
 	final ToggleButton noise = new ToggleButton("Noise (u)");
 	final ToggleButton tier1 = new ToggleButton("Tier1 (i)");
 	final ToggleButton tier2 = new ToggleButton("Tier2 (o)");
-	final ToggleButton knownPulsar = new ToggleButton("Known pulsar (p)");
-	final ToggleButton nbPulsar = new ToggleButton("NB pulsar (l)");
+	final ToggleButton knownPulsar = new ToggleButton("Known PSR (p)");
+	final ToggleButton nbPulsar = new ToggleButton("NB PSR (l)");
 	final ToggleButton reset = new ToggleButton("Uncat (r)");
 
 	final SegmentedButton candidateCategories = 
@@ -278,6 +283,7 @@ public class CandyJar extends Application implements Constants {
 		loadClassification.setVisible(false);
 		utcBox.setVisible(false);
 		beamMapChart.setVisible(false);
+		beamMapPane.setVisible(false);
 		candidateFilterHBox.setVisible(false);
 		sortBox.setVisible(false);
 		actionsBox.setVisible(false);
@@ -414,6 +420,7 @@ public class CandyJar extends Application implements Constants {
 
 				candidateFilterHBox.setVisible(true);
 				beamMapChart.setVisible(true);
+				beamMapPane.setVisible(true);
 				imageView.setVisible(false);
 				actionsBox.setVisible(false);
 				sortBox.setVisible(true);
@@ -431,6 +438,23 @@ public class CandyJar extends Application implements Constants {
 				metaFile = candidates.get(imageCounter).getMetaFile();
 
 				metaFile.findNeighbours();
+				
+				if(metaFile.getPng() != null) {
+					
+					BufferedImage beamImage;
+					try {
+						beamImage = ImageIO.read(metaFile.getPng());
+					
+					ResampleOp resizeOp = new ResampleOp((int)(Math.round(beamMapChart.getWidth())),
+							(int)Math.round(beamMapChart.getHeight()));
+					BufferedImage scaledImage = resizeOp.filter(beamImage, null);
+					beamMapPane.getTabs().add(new Tab("Beam map", addGesture(new ImageView(SwingFXUtils.toFXImage(scaledImage, null)))));
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					}
+				
 				pulsarsInBeam.clear();
 				pulsarsInBeam.addAll(psrcat.getPulsarsInBeam(metaFile.getBoresight().getRa(),
 						metaFile.getBoresight().getDec(), new Angle(1.0, Angle.DEG, Angle.DEG)));
@@ -937,7 +961,6 @@ public class CandyJar extends Application implements Constants {
 		}).collect(Collectors.toList()));
 		if(similarCandidateVBox.getChildren().isEmpty()) similarCandidateVBox.getChildren().add(new Label("None"));
 		
-		table.getItems().add(new Pair<String, Object>("Likely related candidates:" , similarCandidateVBox));
 
 		if(pulsarsInBeam != null && !pulsarsInBeam.isEmpty()) {
 
@@ -950,6 +973,7 @@ public class CandyJar extends Application implements Constants {
 		}else {
 			table.getItems().add(new Pair<String, Object>("Diagnostic information will be displayed here", ""));
 		}
+		table.getItems().add(new Pair<String, Object>("Likely related candidates:" , similarCandidateVBox));
 		
 //		Button dspsrButton = new Button();
 //		String dspsrText = "dspsr -t 4 -U 256 -k meerkat -c " + candidate.get
@@ -1362,8 +1386,10 @@ public class CandyJar extends Application implements Constants {
 		double leftCentreHeight = pngPaneHeight - leftBottomHeight - leftTopHeight;
 
 		beamMapChart.setMinHeight(0.5*leftCentreHeight);
+		
+		beamMapPane.getTabs().add(new Tab("Beam map", beamMapChart));
 
-		VBox centerLeft = new VBox(10, beamMapChart, infoPane, actionsBox);
+		VBox centerLeft = new VBox(10, beamMapPane, infoPane, actionsBox);
 		centerLeft.setPrefSize(remainingWidth, leftCentreHeight);
 		VBox.setVgrow(centerLeft, Priority.ALWAYS);
 
@@ -1371,7 +1397,7 @@ public class CandyJar extends Application implements Constants {
 
 		mainBorderPane.setLeft(leftPane);
 
-		imageViewHBox.getChildren().add(imageView);
+		imageViewHBox.getChildren().add(addGesture(imageView));
 		imageViewHBox.setPrefSize(pngPaneWidth, pngPaneHeight);
 
 		VBox rightPane = new VBox(10, imageViewHBox);
@@ -1684,7 +1710,26 @@ public class CandyJar extends Application implements Constants {
 
 
 
-
+	private GesturePane addGesture(Node n) {
+		GesturePane pane = new GesturePane(n);
+		
+		pane.setOnMouseClicked(e -> {
+			Point2D pivotOnTarget = pane.targetPointAt(new Point2D(e.getX(), e.getY()))
+                    .orElse(pane.targetPointAtViewportCentre());
+			if (e.getButton() == MouseButton.PRIMARY && e.getClickCount() == 2) {
+				
+				// increment of scale makes more sense exponentially instead of linearly 
+				pane.animate(Duration.millis(200))
+						.interpolateWith(Interpolator.EASE_BOTH)
+						.zoomBy(pane.getCurrentScale(), pivotOnTarget);
+			}
+			if (e.getButton() == MouseButton.SECONDARY) {
+				pane.zoomTo(1,pivotOnTarget);
+				
+			}
+		});
+		return pane;
+	}
 
 
 
