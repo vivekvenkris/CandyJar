@@ -62,7 +62,7 @@ public class PointsMarker extends Zoomer{
         filterResetButton = new Button("",  new Glyph(FONT_AWESOME, "\uf28d").size(FONT_SIZE));
         classifyBox = new ComboBox<CANDIDATE_TYPE>(FXCollections.observableArrayList(Arrays.asList(CANDIDATE_TYPE.values())));
         classifyBox.setPromptText("CLASSIFY_AS");
-    	classifyButton = new Button("CLASSIFY_ALL");
+    	classifyButton = new Button("CLASSIFY", new Glyph(FONT_AWESOME, "\uf02c").size(FONT_SIZE));
     	HBox buttonBar = super.getZoomInteractorBar();
 
     	if(shortlistButton == null) {

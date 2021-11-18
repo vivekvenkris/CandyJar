@@ -53,6 +53,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Toggle;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -468,16 +469,16 @@ public class ChartViewer {
 						@Override
 						protected Node createDetailsButton() {
 							String s = "Classify all candidates in the following bounds as: ";
-							HBox radioHBox = new HBox(10);
+							HBox buttonHBox = new HBox();
 							VBox vBox = new VBox(10);
 							vBox.getChildren().add(new Label(s));
-							vBox.getChildren().add(radioHBox);
+							vBox.getChildren().add(buttonHBox);
 							
 							for(CANDIDATE_TYPE t : CANDIDATE_TYPE.values()) {
-								RadioButton rb = new RadioButton(t.toString());
-								rb.setToggleGroup(radioGroup);	
-								rb.setUserData(t);
-								radioHBox.getChildren().add(rb);
+								ToggleButton tb = new ToggleButton(t.toString());
+								tb.setToggleGroup(radioGroup);	
+								tb.setUserData(t);
+								buttonHBox.getChildren().add(tb);
 
 							}
 							vBox.getChildren().add(new Label(finalClassificationRange));
