@@ -17,6 +17,7 @@ module candyjar {
 	requires  commons.cli;
 	requires org.slf4j;
 	requires jsky;
+	requires net.kurobako.gesturefx;
 	
     
     opens application to javafx.fxml;
