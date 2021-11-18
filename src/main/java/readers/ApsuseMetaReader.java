@@ -1,6 +1,7 @@
 package readers;
 
 import java.awt.geom.Point2D;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.Reader;
@@ -156,6 +157,13 @@ public class ApsuseMetaReader {
 			
 			metaFile.setMaxDec(new Angle(maxDec, Angle.RAD, Angle.DDMMSS));
 			metaFile.setMinDec(new Angle(minDec, Angle.RAD, Angle.DDMMSS));
+			
+			String pngFileName = fileName + ".png";
+			
+			if(new File(pngFileName).exists()) {
+				metaFile.setPng(new File(pngFileName));
+			}
+			
 			
 
 			return metaFile;
