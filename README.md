@@ -1,4 +1,4 @@
-# CandyJar V2.1
+# CandyJar V2.2
 Candidate Viewer for TRAPUM and MPIFR pulsar surveys with the MeerKAT telescope
 
 For now, releases will not be given as `jar` files. Please build from source using `gradle`. The application needs `Java 14` or above to run. Please start with installing JAVA and then you can build and run the application. 
@@ -134,6 +134,7 @@ At this point, if you already have the output of a partial classification, you c
 Once you select the UTC, the corresponding beam map will be drawn below along with information on neighbouring pulsars (if any). Now you can filter and sort candidates using the corresponding dropdown menus and click `Go` to start viewing the candidates. Once you hit `Go`, if you have asked for a plotting interface, the corresponding window will appear where you can select the parameters of your choice to plot. On the main window, you can use the buttons for navigation and classification or use the corresponding keys (given in paranthesis). For smaller screens, you can also press the spacebar to open the current PNG file using your default PNG viewer in full resolution. If you choose the CandyCharts to open on the secondary window, hovering over the plot title will bring up the tool bar which will allow you to zoom, pan, and mark candidates. 
 
 Once the classification is done, you can press the "Save classification" button to write out your classification to a CSV file. The application also automatically saves your classification every two minutes in the root candidate directory. In the event where the application crashes, you can resume from where you left off by loading this classification back when the application is restarted.  This file will need to me manually removed after the classification is over. 
+
 
 
 
