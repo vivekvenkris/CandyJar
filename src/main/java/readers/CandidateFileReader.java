@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -38,11 +39,12 @@ public class CandidateFileReader implements CandidateFileConstants {
 //					.filter(f -> !f.startsWith("#") && !f.contains("id")).map(f -> new Candidate(f)).collect(Collectors.toList());
 						
 
-			List<String> headers = lines.stream().filter(f-> f.contains("utc_start")).collect(Collectors.toList());
+			Set<String> headers = lines.stream().filter(f-> f.contains("utc_start")).collect(Collectors.toSet());
 			if (headers.isEmpty() || headers.size() > 1) {
-				throw new InvalidInputException("CSV is either the wrong format, or has no/multiple headers.");
+				throw new InvalidInputException("CSV is either the wrong format, or has no/multiple non-identical headers.");
 			}
-			List<String> headerChunks = Arrays.asList(headers.get(0).split(","));
+
+			List<String> headerChunks = Arrays.asList(headers.toArray()[0].toString().split(","));
 			Map<String, Integer> headerPositions = new HashMap<String, Integer>();
 			for(String x : csvParams) {
 				headerPositions.put(x, headerChunks.indexOf(x));
