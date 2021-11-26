@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,10 +58,11 @@ public class Psrcat implements PsrcatConstants {
 				Double r = Utilities.distanceFromEllipseCenter(radius.getRadianValue(),
 						radius.getRadianValue(), theta.getRadianValue());
 				
+				pulsar.setDistanceFromBoresight(distance.getDegreeValue());
 				if (distance.getRadianValue() / r <= 1) return true;
-				
+
 				return false;
-			}).map(f ->  f.getValue()).collect(Collectors.toList());
+			}).map(f ->  f.getValue()).sorted(Comparator.comparing(f -> ((Pulsar)f).getDistanceFromBoresight())).collect(Collectors.toList());
 		
 	}
 	
