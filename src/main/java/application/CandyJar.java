@@ -122,6 +122,8 @@ public class CandyJar extends Application implements Constants {
 
 	private static Rectangle2D primaryScreenBounds = Screen.getPrimary().getBounds();
 	private static Rectangle2D secondaryScreenBounds = null;
+	
+	private static double knownPulsarRadius = 1.0;
 
 	private static Integer numCharts = 2;
 	private static Integer minNumCharts = 0;
@@ -457,7 +459,7 @@ public class CandyJar extends Application implements Constants {
 				
 				pulsarsInBeam.clear();
 				pulsarsInBeam.addAll(psrcat.getPulsarsInBeam(metaFile.getBoresight().getRa(),
-						metaFile.getBoresight().getDec(), new Angle(1.0, Angle.DEG, Angle.DEG)));
+						metaFile.getBoresight().getDec(), new Angle(knownPulsarRadius, Angle.DEG, Angle.DEG)));
 				infoPane.getTabs().clear();
 				candidateTab.setClosable(false);
 				diagnosticTab.setClosable(false);
@@ -867,7 +869,7 @@ public class CandyJar extends Application implements Constants {
 						.map(f -> f.getIntegerBeamName()).collect(Collectors.toList()));
 			else
 				message.setText("Cannot find beam: " + candidate.getBeamName());
-
+			table.getItems().add(new Pair<String, Object>("Position:", new CopyableLabel(candidate.getRa() + " " + candidate.getDec())));
 			table.getItems().add(new Pair<String, Object>("Pointing ID:", new CopyableLabel(candidate.getPointingID()))); 
 			table.getItems().add(new Pair<String, Object>("Beam ID:", new CopyableLabel(candidate.getBeamID())));
 			table.getItems().add(new Pair<String, Object>("Beam Name:", new CopyableLabel(candidate.getBeamName())));
@@ -880,8 +882,6 @@ public class CandyJar extends Application implements Constants {
 			table.getItems().add(new Pair<String, Object>("Fold SNR: ", new CopyableLabel(candidate.getFoldSNR())));
 
 			table.getItems().add(new Pair<String, Object>("Boresight:", new CopyableLabel(candidate.getSourceName())));
-			table.getItems().add(new Pair<String, Object>("RA:", new CopyableLabel(candidate.getRa())));
-			table.getItems().add(new Pair<String, Object>("DEC:", new CopyableLabel(candidate.getDec())));
 			table.getItems().add(new Pair<String, Object>("GL:", new CopyableLabel(candidate.getGl())));
 			table.getItems().add(new Pair<String, Object>("GB:", new CopyableLabel(candidate.getGb())));
 
@@ -963,12 +963,10 @@ public class CandyJar extends Application implements Constants {
 		
 
 		if(pulsarsInBeam != null && !pulsarsInBeam.isEmpty()) {
-
-			for (Pulsar pulsar : pulsarsInBeam) {
+			
+			pulsarsInBeam.stream().forEach(pulsar -> {
 				table.getItems().add(new Pair<String, Object>(pulsar.getName() , KnownPulsarGuesser.guessPulsar(candidate, pulsar)));
-				
-
-			}
+			});
 
 		}else {
 			table.getItems().add(new Pair<String, Object>("Diagnostic information will be displayed here", ""));
@@ -1068,9 +1066,8 @@ public class CandyJar extends Application implements Constants {
 			table.getItems().add(new Pair<String, Object>("RA:", new CopyableLabel(pulsar.getRa().toHHMMSS())));
 			table.getItems().add(new Pair<String, Object>("DEC:", new CopyableLabel(pulsar.getDec().toDDMMSS())));
 			
-			double distance = Utilities.getAngularDistance(pulsar, metaFile.getBoresight()); 
 			table.getItems().add(new Pair<String, Object>("Angular distance from Boresight:",
-					new CopyableLabel(distance + " deg = " + distance*3600+"\"")));
+					new CopyableLabel(pulsar.getDistanceFromBoresight() + " deg = " + pulsar.getDistanceFromBoresight()*3600+"\"")));
 			
 			table.getItems().add(new Pair<String, Object>("DM:",new CopyableLabel(pulsar.getDm().toString())));
 			table.getItems().add(new Pair<String, Object>("P0:", new CopyableLabel(pulsar.getP0().toString())));
@@ -1541,7 +1538,10 @@ public class CandyJar extends Application implements Constants {
 		Option addPsrcatDB = new Option("d","add_psrcat_db",true, "Add a psrcat database to get known pulsars from. Currently only takes pulsars with positions in RA/DEC and in correct hms/dms format");
 
 		Option extendPng = new Option("e", "extend_png", false, "Scale png beyond actual size. "
-				+ "This is only ever useful for large resolution monitors where you want to resize the PNG to a higher resolution than original."); 
+				+ "This is only ever useful for large resolution monitors where you want to resize the PNG to a higher resolution than original.");
+		
+		Option knownPulsarRadius = new Option("r", "radius", true, "Add tabs for known pulsars within this radius from boresight"
+				+ " Default:  " + CandyJar.knownPulsarRadius);
 
 		options.addOption(selectPrimaryScreen);
 		options.addOption(selectSecondaryScreen);
@@ -1550,6 +1550,7 @@ public class CandyJar extends Application implements Constants {
 		options.addOption(addPsrcatDB);
 		options.addOption(numCharts);
 		options.addOption(extendPng);
+		options.addOption(knownPulsarRadius);
 
 		try{
 
@@ -1621,6 +1622,12 @@ public class CandyJar extends Application implements Constants {
 				String value = getValue(addPsrcatDB);
 				PsrcatConstants.psrcatDBs.add(value);
 			}
+			
+			if(hasOption(knownPulsarRadius)) {
+				String value = getValue(knownPulsarRadius);
+				CandyJar.knownPulsarRadius = Double.parseDouble(value);
+			}
+			
 		}catch(Exception e){
 			System.err.println(e.getMessage());
 			help();
