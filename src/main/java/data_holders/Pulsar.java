@@ -15,6 +15,7 @@ public class Pulsar {
 	private Double a1;
 	private Double ecc;
 	private String ephemerides;
+	private double distanceFromBoresight;
 	
 	public Pulsar(){
 		ephemerides = "";
@@ -120,6 +121,14 @@ public class Pulsar {
 	public String toString() {
 		
 		return this.getName() + " " + this.ra + " "+ this.dec +"\n";
+	}
+
+	public double getDistanceFromBoresight() {
+		return distanceFromBoresight;
+	}
+
+	public void setDistanceFromBoresight(double distanceFromBoresight) {
+		this.distanceFromBoresight = distanceFromBoresight;
 	}
 	
 
