@@ -112,10 +112,7 @@ public class Candidate {
 
 	public boolean isSimilarTo(Candidate c2) {
 		
-//		if (Math.abs(this.getOptDM() - c2.getOptDM()) /this.getOptDMErr() < 1 &&
-//				Math.abs(this.getOptF0() - c2.getOptF0()) / this.getOptF0Err() < 1 &&
-//					Math.abs(this.getOptAcc() - c2.getOptAcc())/this.getOptAccErr() < 1) return true;
-//		else return false;
+
 		double minF0 = this.getOptF0() - 1e-4;
 		double maxF0 = this.getOptF0() + 1e-4;
 
@@ -195,7 +192,13 @@ public class Candidate {
 		return String.format("%8.5f %4.2f", this.optF0, this.optDM);
 	}
 	
+	public String getP0DMString() {
+		return String.format("%8.5f %4.2f", this.getOptP0(), this.optDM);
+	}
 	
+	public String getBeamP0DMString() {
+		return String.format("%f %8.5f %4.2f", this.beamName.replace("fbf", ""), this.getOptP0(), this.optDM);
+	}
 	@Override
 	public String toString() {
 		
