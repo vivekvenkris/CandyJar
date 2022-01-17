@@ -86,6 +86,9 @@ public class PointsMarker extends Zoomer{
         
         filterResetButton.setPadding(new Insets(3, 3, 3, 3));
         filterResetButton.setTooltip(new Tooltip("Reset filters"));
+        
+        classifyButton.setPadding(new Insets(3, 3, 3, 3));
+        classifyButton.setTooltip(new Tooltip("Bulk classify all candidates in view"));  
         toolBar = new HBox(separator1, shortlistButton, shortlistResetButton, separator2, filterButton, filterResetButton, separator3, classifyButton);
         return toolBar;
     }
