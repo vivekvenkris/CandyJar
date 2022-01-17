@@ -18,6 +18,9 @@ module candyjar {
 	requires org.slf4j;
 	requires jsky;
 	requires net.kurobako.gesturefx;
+	requires unirest.java;
+	requires javaxt.core;
+	requires imgscalr.lib;
 	
     
     opens application to javafx.fxml;
