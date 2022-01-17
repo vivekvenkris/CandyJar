@@ -115,7 +115,7 @@ public class Psrcat implements PsrcatConstants {
 						else if(name.equals(F0)) pulsar.setF0(Double.parseDouble(value));
 						else if(name.equals(P0)) pulsar.setP0(Double.parseDouble(value));
 						else if(name.equals(DM)) pulsar.setDm(Double.parseDouble(value));
-						
+						else if (name.equals(BINARY)) pulsar.setBinary(true);
 						pulsar.addToEphemerides(line);
 					
 					}catch (NumberFormatException e) {
