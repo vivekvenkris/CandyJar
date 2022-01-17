@@ -55,11 +55,13 @@ import javafx.scene.control.SplitPane;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.stage.Modality;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
@@ -175,7 +177,8 @@ public class ChartViewer {
 			public void handle(WindowEvent event) {
 									event.consume();
 									Alert alert = new Alert(AlertType.INFORMATION);
-				
+									alert.initModality(Modality.APPLICATION_MODAL);
+									alert.initOwner(primaryStage);
 									alert.setTitle("Closing window alert");
 									alert.setHeaderText("You cannot close this window.");
 									alert.setContentText("Please close the primary window to close the application.");
@@ -252,7 +255,7 @@ public class ChartViewer {
 			
 			
 		});
-		candyJar.getFilterTypes().getCheckModel().check(candyJar.getFilterTypes().getCheckModel().getItemIndex(type));
+		//candyJar.getFilterTypes().getCheckModel().check(candyJar.getFilterTypes().getCheckModel().getItemIndex(type));
 		candyJar.getFilterCandidates().fire();
 
 	}
@@ -399,6 +402,9 @@ public class ChartViewer {
 
 			HBox.setHgrow(chart, Priority.ALWAYS);
 			VBox.setVgrow(chart, Priority.ALWAYS);
+			
+			HBox.setHgrow(xAxisBox, Priority.NEVER);
+			HBox.setHgrow(yAxisBox, Priority.NEVER);
 
 			go.setOnAction(new EventHandler<ActionEvent>() {
 
@@ -424,6 +430,10 @@ public class ChartViewer {
 
 				}
 			});
+			go.setPadding(new Insets(3, 3, 3, 3));
+			controlBox.getChildren().add(0, pointsMarker.getZoomInteractorBar());
+			
+			
 			
 			pointsMarker.getShortlistButton().setOnAction( e-> {
 																	e.consume();
@@ -434,6 +444,7 @@ public class ChartViewer {
 			pointsMarker.getFilterButton().setOnAction(e-> {
 																e.consume();
 																filterCandidates(getCurrentMinMaxMap());
+																
 														   });
 			
 			pointsMarker.getShortlistResetButton().setOnAction(e-> {
