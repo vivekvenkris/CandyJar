@@ -56,11 +56,11 @@ public class KnownPulsarGuesser {
 //		
 //		boolean  closeInSpace = false;
 		
-		s+= String.format("Angular distance: %.5f", Utilities.getAngularDistance(pulsarRA, pulsarDEC, candidate.getRa(), candidate.getDec()).getDegreeValue()) + " degrees. \n";
+		s+= String.format("Haversine distance: %.5f", Utilities.getAngularDistance(pulsarRA, pulsarDEC, candidate.getRa(), candidate.getDec()).getDegreeValue()) + " degrees. \n";
 		s+= String.format("Absolute DM difference: %.3f \n",Math.abs(pulsarDM - candidate.getOptDM()));
 		s+= String.format("Pulsar frequency / candidate frequency: %.6f \n",Math.abs(pulsarF0 / candidate.getOptF0()));
 		s+= String.format("Candidate frequency / pulsar frequency: %.6f \n",Math.abs(candidate.getOptF0()/pulsarF0));
-
+		
 		return s;
 		
 	}
