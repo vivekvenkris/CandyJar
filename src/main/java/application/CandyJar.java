@@ -37,6 +37,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.io.FileUtils;
 import org.controlsfx.control.CheckComboBox;
 import org.controlsfx.control.SegmentedButton;
+import org.controlsfx.glyphfont.Glyph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +70,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
+import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.chart.NumberAxis;
@@ -80,6 +82,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
@@ -87,8 +90,12 @@ import javafx.scene.control.TabPane;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyEvent;
@@ -103,6 +110,7 @@ import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
@@ -130,6 +138,8 @@ public class CandyJar extends Application implements Constants {
 	private static Integer maxNumCharts = 3;
 
 	private static Boolean extendPng = false;
+    private static final String FONT_AWESOME = "FontAwesome";
+    private static final int FONT_SIZE = 20;
 
 	Psrcat psrcat = new Psrcat();
 
@@ -249,6 +259,9 @@ public class CandyJar extends Application implements Constants {
 	/* second screen */
 
 	ChartViewer chartViewer = null;
+	private static CandyJar candyJar;
+	private Stage myStage;
+
 
 	public void initialise() {
 		
@@ -302,13 +315,17 @@ public class CandyJar extends Application implements Constants {
 		chartViewer = secondaryScreenBounds!=null? new ChartViewer(secondaryScreenBounds, numCharts, this): null;
 	}
 
+	public Stage getStage() {
+		return myStage;
+	}
 
 	@Override
 	public void start(Stage stage) throws Exception {
-
+		this.myStage = stage;
 
 		configureLayout();
 		initialise();
+		if (CandyJar.candyJar == null) CandyJar.candyJar = this;
 
 		scheduler.scheduleAtFixedRate(new Runnable() {
 
@@ -442,20 +459,24 @@ public class CandyJar extends Application implements Constants {
 				metaFile.findNeighbours();
 				
 				if(metaFile.getPng() != null) {
-					
+					if(beamMapPane.getTabs().size() > 1) beamMapPane.getTabs().remove(beamMapPane.getTabs().size()-1);
 					BufferedImage beamImage;
 					try {
 						beamImage = ImageIO.read(metaFile.getPng());
+
+
+//					BufferedImage scaledImage = Scalr.resize(beamImage, Method.ULTRA_QUALITY, Mode.FIT_TO_HEIGHT, 
+//							(int)Math.round(3*beamMapChart.getWidth()),
+//							(int)Math.round(3*beamMapChart.getHeight()));
 					
-					ResampleOp resizeOp = new ResampleOp((int)(Math.round(beamMapChart.getWidth())),
-							(int)Math.round(beamMapChart.getHeight()));
-					BufferedImage scaledImage = resizeOp.filter(beamImage, null);
-					beamMapPane.getTabs().add(new Tab("Beam map", addGesture(new ImageView(SwingFXUtils.toFXImage(scaledImage, null)))));
+				    GesturePane gesturePane = addGesture(new ImageView(SwingFXUtils.toFXImage(beamImage, null)));
+				    gesturePane.setMaxWidth(beamMapChart.getWidth());
+				    gesturePane.setMaxHeight(beamMapChart.getHeight());				    
+					beamMapPane.getTabs().add(new Tab("Beam map", gesturePane));
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
-					}
+				}
 				
 				pulsarsInBeam.clear();
 				pulsarsInBeam.addAll(psrcat.getPulsarsInBeam(metaFile.getBoresight().getRa(),
@@ -467,6 +488,7 @@ public class CandyJar extends Application implements Constants {
 				populatePulsarTabs(infoPane);
 				infoPane.getTabs().add(0, candidateTab);
 				infoPane.getTabs().add(1, diagnosticTab);
+				infoPane.getSelectionModel().select(diagnosticTab);
 
 				double xLowerBound = metaFile.getMinRa().getDecimalHourValue();
 				double xUpperBound = metaFile.getMaxRa().getDecimalHourValue();
@@ -690,7 +712,8 @@ public class CandyJar extends Application implements Constants {
 				if (saveFile.exists()) {
 
 					Alert alert = new Alert(AlertType.CONFIRMATION);
-
+					alert.initModality(Modality.APPLICATION_MODAL);
+					alert.initOwner(stage);
 					alert.setTitle("Overwriting existing file");
 					alert.setHeaderText("The selected file already exists.");
 					alert.setContentText("Do you want to overwrite it?");
@@ -940,49 +963,128 @@ public class CandyJar extends Application implements Constants {
 	public void progress() {
 		candidateCategories.requestLayout();
 		next.fire();
-		//		if (goingForward || imageCounter == 0)
-		//			next.fire();
-		//		else
-		//			previous.fire();
+		
 	}
+	
 
 	public void updateDiagnosticTab(TabPane tabPane, Candidate candidate) {
 		final TableView<Pair<String, Object>> table = new TableView<>();
-		VBox similarCandidateVBox = new VBox();
-		similarCandidateVBox.getChildren().addAll(candidate.getSimilarCandidatesInFreq().stream().map(f -> {
-			String fileStr = f.getPngFilePath();
-			Hyperlink link = new Hyperlink(fileStr);
-			link.setText(f.getF0DMString());
-			link.setOnAction(e ->
-				getHostServices().showDocument(new File( baseDir.getAbsolutePath() + File.separator + fileStr).toURI().toString()));
-
-			return link;
-
-		}).collect(Collectors.toList()));
-		if(similarCandidateVBox.getChildren().isEmpty()) similarCandidateVBox.getChildren().add(new Label("None"));
-		
-
+		// add diagnostics of known pulsars
 		if(pulsarsInBeam != null && !pulsarsInBeam.isEmpty()) {
 			
+			pulsarsInBeam.sort(Comparator.comparing(f -> Math.abs(((Pulsar)f).getDm() - candidate.getOptDM())));
+						
 			pulsarsInBeam.stream().forEach(pulsar -> {
 				table.getItems().add(new Pair<String, Object>(pulsar.getName() , KnownPulsarGuesser.guessPulsar(candidate, pulsar)));
 			});
-
-		}else {
-			table.getItems().add(new Pair<String, Object>("Diagnostic information will be displayed here", ""));
 		}
-		table.getItems().add(new Pair<String, Object>("Likely related candidates:" , similarCandidateVBox));
 		
-//		Button dspsrButton = new Button();
-//		String dspsrText = "dspsr -t 4 -U 256 -k meerkat -c " + candidate.get
-//		
-//		table.getItems().add(new Pair<String, Object>("dspsr Predictor file", ""));
+		List<Candidate> uncatCandidates = candidate.getSimilarCandidatesInFreq().stream()
+				.filter(c-> c.getCandidateType().equals(CANDIDATE_TYPE.UNCAT)).collect(Collectors.toList());
 		
+		if(uncatCandidates.isEmpty()) {
+			table.getItems().add(new Pair<String, Object>("Likely related uncategorized candidates:" , "None"));
+
+		}
+		else {
+			VBox similarCandidateVBox = new VBox();
+			
+			TreeItem<Hyperlink> rootItem = new TreeItem<Hyperlink> (new Hyperlink(uncatCandidates.size() +
+					" Likely related uncategorized candidates"));
+			for(Candidate c: uncatCandidates) {
+				String fileStr = c.getPngFilePath();
+				Hyperlink link = new Hyperlink(fileStr);
+				link.setText(c.getBeamP0DMString());
+				link.setOnAction(e ->
+					getHostServices().showDocument(new File(baseDir.getAbsolutePath() + File.separator + fileStr).toURI().toString()));
+				TreeItem<Hyperlink> item = new TreeItem<Hyperlink>(link);
+				rootItem.getChildren().add(item);
+			}
+			TreeView<Hyperlink> tree = new TreeView<Hyperlink>(rootItem);
+			rootItem.setExpanded(false);
+			similarCandidateVBox.getChildren().add(tree);
+			Button button  = new Button("BULK CLASSIFY", new Glyph(FONT_AWESOME, "\uf02c").size(FONT_SIZE));
+			similarCandidateVBox.getChildren().add(0, button);
+			button.setOnAction(new EventHandler<ActionEvent>() {
+				
+				@Override
+				public void handle(ActionEvent event) {
+					event.consume();
+					ToggleGroup radioGroup = new ToggleGroup();
+					CheckBox onlyThisBeam = new CheckBox("Only this beam");
+					Alert alert = new Alert(AlertType.CONFIRMATION);
+					alert.initModality(Modality.APPLICATION_MODAL);
+					alert.initOwner(CandyJar.candyJar.getStage());
+					Node graphic = alert.getDialogPane().getGraphic();
+					alert.setDialogPane(new DialogPane() {
+						@Override
+						protected Node createDetailsButton() {
+							String s = "Classify all likely candidates as: ";
+							HBox buttonHBox = new HBox();
+							VBox vBox = new VBox(10,new Label(s),buttonHBox,onlyThisBeam);
+							
+							for(CANDIDATE_TYPE t : CANDIDATE_TYPE.values()) {
+								ToggleButton tb = new ToggleButton(t.toString());
+								tb.setToggleGroup(radioGroup);
+								tb.setUserData(t);
+								buttonHBox.getChildren().add(tb);
+								
+							}
+							
+
+							return vBox;
+						}
+						
+					});
+										
+					
+						
+					alert.setTitle("Classify as");
+					alert.getDialogPane().setExpandableContent(new Group());
+				    alert.getDialogPane().setExpanded(true);
+					alert.getDialogPane().setGraphic(graphic);
+					alert.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+					Optional<ButtonType> result = alert.showAndWait();
+					
+					if(result != null && result.get() == ButtonType.OK) {
+						
+						Toggle toggle = radioGroup.getSelectedToggle();
+						
+						if(toggle != null && toggle.isSelected()) {
+							
+							CANDIDATE_TYPE type = (CANDIDATE_TYPE) toggle.getUserData();
+							
+							candidate.getSimilarCandidatesInFreq().forEach(f -> {
+								if( !onlyThisBeam.isSelected() || currentCandidate.getBeamName().equals(f.getBeamName())) {
+									f.setCandidateType(type);
+								}	
+							});
+							candidate.setCandidateType(type);
+							CandyJar.candyJar.getFilterCandidates().fire();
+							
+						}
+						
+						
+					}
+					
+					
+				}
+			});	
+			
+			
+
+			table.getItems().add(new Pair<String, Object>("Likely related uncategorized candidates:" , similarCandidateVBox));
+
+			
+		}
+		
+
+		
+		
+
 		boolean addAcc = false;
 		if(Math.abs(candidate.getOptAcc() / candidate.getOptAccErr()) > 2 ) addAcc = true;
-		
 
-		
 		Button prepfoldButton = new Button("prepfold");
 		Button pulsarxButton = new Button("pulsarx");
 		Button dspsrButton = new Button("dspsr");
@@ -1028,7 +1130,7 @@ public class CandyJar extends Application implements Constants {
 		});
 		
 		
-		table.getItems().add(0, new Pair<String, Object>("Copy folding commands", new VBox(prepfoldButton, pulsarxButton, dspsrButton)));
+		table.getItems().add(0, new Pair<String, Object>("Copy folding commands", new HBox(prepfoldButton, pulsarxButton, dspsrButton)));
 
 
 		TableColumn<Pair<String, Object>, String> nameColumn = new TableColumn<>("Item");
@@ -1153,9 +1255,15 @@ public class CandyJar extends Application implements Constants {
 				break;
 
 			case SPACE:
+				if(event.isControlDown()) {
+					if(metaFile != null && metaFile.getPng()!= null) {
+						getHostServices().showDocument(metaFile.getPng().toURI().toString());
+					}
+				}
+				else {
 				if(!candidatesVisible) return;
 				getHostServices().showDocument(new File( baseDir.getAbsolutePath() + File.separator + ((Candidate)imageView.getUserData()).getPngFilePath()).toURI().toString());
-
+				}
 			default:
 				break;
 			}
@@ -1264,6 +1372,7 @@ public class CandyJar extends Application implements Constants {
 
 
 		Candidate candidate = candidates.get(count);
+		this.currentCandidate = candidate;
 
 
 		imageView.setImage(candidate.getImage());
@@ -1516,7 +1625,7 @@ public class CandyJar extends Application implements Constants {
 
 		LOGGER.atDebug().addArgument("test");
 
-		System.err.println("*************************Candy Jar V2.1-alpha*******************************");
+		System.err.println("*************************Candy Jar V2.2*******************************");
 
 		if(System.getenv("PSRCAT_DIR") != null) {
 			PsrcatConstants.psrcatDBs.add(System.getenv("PSRCAT_DIR") + File.separator + "psrcat.db");
