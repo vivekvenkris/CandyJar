@@ -25,6 +25,7 @@ public class Pulsar {
 		p0 = 0.0;
 		p1 = 0.0;
 		dm = 0.0;
+		binary=false;
 		
 	}
 
