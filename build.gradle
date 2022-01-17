@@ -24,6 +24,10 @@ repositories {
     // Use jcenter for resolving dependencies.
     // You can declare any Maven/Ivy/file repository here.
     mavenCentral()
+    maven{
+       url "http://www.javaxt.com/maven"
+    }
+
 }
 
 javafx {
@@ -68,7 +72,7 @@ configurations.all {
 	
 	}
 }
-version = '2.1'
+version = '2.3'
 
 dependencies {
 	
@@ -96,9 +100,12 @@ dependencies {
 	implementation (group: 'org.slf4j', name: 'slf4j-api', version: '2.0.0-alpha1')
 	implementation (group: 'org.webjars', name: 'font-awesome', version: '5.13.0')
 	implementation (group: 'net.kurobako', name: 'gesturefx', version: '0.7.1')
-	
+	implementation (group: 'com.konghq', name: 'unirest-java', version: '3.13.3')
+	implementation (group: 'javaxt', name: 'javaxt-core', version: '1.10.6')
+	implementation (group: 'org.imgscalr', name: 'imgscalr-lib', version: '4.2')
 
 }
+
 application {
     applicationDefaultJvmArgs =  [
             "--add-opens=javafx.base/com.sun.javafx.runtime=org.controlsfx.controls",
@@ -112,9 +119,7 @@ application {
             "--add-opens=javafx.controls/javafx.scene.control.skin=org.controlsfx.controls",
             "--add-opens=javafx.controls/com.sun.javafx.scene.control.inputmap=org.controlsfx.controls",
             "--add-opens=javafx.graphics/com.sun.javafx.css=org.controlsfx.controls",
-            "-Xms512m", 
-            "-Xmx1024m",
-
+	    '-Xms2048m', '-Xmx4096m'
             
     ]
     //mainClassName = project.findProperty("chooseMain").toString()
