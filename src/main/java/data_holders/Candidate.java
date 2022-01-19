@@ -197,7 +197,7 @@ public class Candidate {
 	}
 	
 	public String getBeamP0DMString() {
-		return String.format("%f %8.5f %4.2f", this.beamName.replace("fbf", ""), this.getOptP0(), this.optDM);
+		return String.format("%s %8.5f %4.2f", this.beamName.replace("fbf", ""), this.getOptP0(), this.optDM);
 	}
 	@Override
 	public String toString() {
