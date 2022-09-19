@@ -121,6 +121,7 @@ import net.kurobako.gesturefx.GesturePane;
 import readers.CandidateFileReader;
 import readers.Psrcat;
 import utilitites.AppUtils;
+import utilitites.GetCloseBeams;
 import utilitites.Utilities;
 
 public class CandyJar extends Application implements Constants {
@@ -128,18 +129,21 @@ public class CandyJar extends Application implements Constants {
 //	private static Screen primaryScreen = Screen.getPrimary();
 //	private static Screen secondaryScreen = null;
 
-	private static Rectangle2D primaryScreenBounds = Screen.getPrimary().getBounds();
-	private static Rectangle2D secondaryScreenBounds = null;
+	public static Rectangle2D primaryScreenBounds = Screen.getPrimary().getBounds();
+	public static Rectangle2D secondaryScreenBounds = null;
 	
-	private static double knownPulsarRadius = 1.0;
+	public static double knownPulsarRadius = 1.0;
+	public static double pngAspectRatio = 1.0;
+	public static double maxPngOccupancy = 0.5;
+	public static String crossMatchRationale = "32:0.00001";
 
-	private static Integer numCharts = 2;
-	private static Integer minNumCharts = 0;
-	private static Integer maxNumCharts = 3;
+	public static Integer numCharts = 2;
+	public static Integer minNumCharts = 0;
+	public static Integer maxNumCharts = 3;
 
-	private static Boolean extendPng = false;
-    private static final String FONT_AWESOME = "FontAwesome";
-    private static final int FONT_SIZE = 20;
+	public static Boolean extendPng = false;
+	public static final String FONT_AWESOME = "FontAwesome";
+	public static final int FONT_SIZE = 20;
 
 	Psrcat psrcat = new Psrcat();
 
@@ -369,6 +373,8 @@ public class CandyJar extends Application implements Constants {
 
 				System.err.println("Loading new root directory: " + rootDirTB.getTextField().getText());
 				baseDir = new File(rootDirTB.getTextField().getText());
+				
+				psrcat.readPersonalPulsarList(baseDir+ File.separator + "pulsars.list");
 
 				String csv = baseDir.getAbsolutePath() + File.separator + Constants.CSV_FILE_NAME;
 
@@ -391,7 +397,7 @@ public class CandyJar extends Application implements Constants {
 						String utcString = Utilities.getUTCString(utc, DateTimeFormatter.ISO_DATE_TIME);
 						List<Candidate> candidatesPerUtc = fullCandiatesList.stream().filter(f -> f.getStartUTC().equals(utc)).collect(Collectors.toList());
 						candidateMap.put(utcString, candidatesPerUtc);
-						checkSimilarity(candidatesPerUtc);
+						Helpers.findCandidateSimilarities(candidatesPerUtc);
 
 					}
 
@@ -469,7 +475,7 @@ public class CandyJar extends Application implements Constants {
 //							(int)Math.round(3*beamMapChart.getWidth()),
 //							(int)Math.round(3*beamMapChart.getHeight()));
 					
-				    GesturePane gesturePane = addGesture(new ImageView(SwingFXUtils.toFXImage(beamImage, null)));
+				    GesturePane gesturePane = Helpers.addGesture(new ImageView(SwingFXUtils.toFXImage(beamImage, null)));
 				    gesturePane.setMaxWidth(beamMapChart.getWidth());
 				    gesturePane.setMaxHeight(beamMapChart.getHeight());				    
 					beamMapPane.getTabs().add(new Tab("Beam map", gesturePane));
@@ -485,7 +491,7 @@ public class CandyJar extends Application implements Constants {
 				candidateTab.setClosable(false);
 				diagnosticTab.setClosable(false);
 				updateTab(candidateTab, null);
-				populatePulsarTabs(infoPane);
+				Helpers.populatePulsarTabs(infoPane, pulsarsInBeam);
 				infoPane.getTabs().add(0, candidateTab);
 				infoPane.getTabs().add(1, diagnosticTab);
 				infoPane.getSelectionModel().select(diagnosticTab);
@@ -520,7 +526,7 @@ public class CandyJar extends Application implements Constants {
 				beamMapXAxis.setLabel("RA (hms)");
 				beamMapYAxis.setLabel("DEC (dms)");
 
-				addDefaultMap(metaFile, pulsarsInBeam);
+				beamMapChart.addDefaultMap(metaFile, pulsarsInBeam);
 
 				message.setText("Meta file and neighbouring pulsars added. Please filter required candidates.");
 
@@ -839,45 +845,6 @@ public class CandyJar extends Application implements Constants {
 
 	}
 
-	public void addDefaultMap(MetaFile metaFile, List<Pulsar> pulsars) {
-
-		beamMapChart.getData().clear();
-
-		XYChart.Series<Number, Number> beamPositions = new XYChart.Series<Number, Number>();
-		beamPositions.setName(Constants.DEFAULT_BEAM_MAP);
-
-//		for (Entry<String, Beam> e : metaFile.getBeams().entrySet()) {
-//			Beam b = e.getValue();
-//			Point2D.Double p = CoordUtils.getPixelCoordinates(metaFile.getBoresight(), b);
-//			Data<Number, Number> d = new Data<Number, Number>(b.getRaPixel().getDecimalHourValue(), b.getDecPixel().getDegreeValue());
-//			d.setExtraValue(b);
-//			beamPositions.getData().add(d);
-//		}
-		for (Entry<String, Beam> e : metaFile.getBeams().entrySet()) {
-			Beam b = e.getValue();
-			Data<Number, Number> d = new Data<Number, Number>(b.getRa().getDecimalHourValue(), b.getDec().getDegreeValue());
-			d.setExtraValue(b);
-			beamPositions.getData().add(d);
-		}
-
-
-		XYChart.Series<Number, Number> pulsarPositions = new XYChart.Series<Number, Number>();
-
-		for (Pulsar pulsar : pulsars) {
-
-			Data<Number, Number> d = new Data<Number, Number>(pulsar.getRa().getDecimalHourValue(),
-					pulsar.getDec().getDegreeValue());
-			pulsarPositions.getData().add(d);
-
-		}
-		pulsarPositions.setName(Constants.KNOWN_PULSAR_BEAM_MAP);
-
-		beamMapChart.getData().add(beamPositions);
-		//chart.getData().add(pulsarPositions);
-
-	}
-
-
 	public void updateTab(Tab tab, Candidate candidate) {
 		tab.setText("Candidate Info");
 
@@ -942,8 +909,8 @@ public class CandyJar extends Application implements Constants {
 		TableColumn<Pair<String, Object>, Object> valueColumn = new TableColumn<>("Value");
 		valueColumn.setSortable(false);
 
-		nameColumn.setCellValueFactory(new PairKeyFactory());
-		valueColumn.setCellValueFactory(new PairValueFactory());
+		nameColumn.setCellValueFactory(new Helpers.PairKeyFactory());
+		valueColumn.setCellValueFactory(new Helpers.PairValueFactory());
 
 		table.getColumns().setAll(nameColumn, valueColumn);
 
@@ -952,7 +919,7 @@ public class CandyJar extends Application implements Constants {
 					@Override
 					public TableCell<Pair<String, Object>, Object> call(
 							TableColumn<Pair<String, Object>, Object> column) {
-						return new PairValueCell();
+						return new Helpers.PairValueCell();
 					}
 				});
 
@@ -968,6 +935,7 @@ public class CandyJar extends Application implements Constants {
 	
 
 	public void updateDiagnosticTab(TabPane tabPane, Candidate candidate) {
+
 		final TableView<Pair<String, Object>> table = new TableView<>();
 		// add diagnostics of known pulsars
 		if(pulsarsInBeam != null && !pulsarsInBeam.isEmpty()) {
@@ -979,22 +947,25 @@ public class CandyJar extends Application implements Constants {
 			});
 		}
 		
-		List<Candidate> uncatCandidates = candidate.getSimilarCandidatesInFreq().stream()
+		List<Candidate> uncatSimilarCandidates = candidate.getSimilarCandidatesInFreq().stream()
 				.filter(c-> c.getCandidateType().equals(CANDIDATE_TYPE.UNCAT)).collect(Collectors.toList());
 		
-		if(uncatCandidates.isEmpty()) {
+		if(candidate.getSimilarCandidatesInFreq().isEmpty()) {
 			table.getItems().add(new Pair<String, Object>("Likely related uncategorized candidates:" , "None"));
-
 		}
 		else {
 			VBox similarCandidateVBox = new VBox();
 			
-			TreeItem<Hyperlink> rootItem = new TreeItem<Hyperlink> (new Hyperlink(uncatCandidates.size() +
+			TreeItem<Hyperlink> rootItem = new TreeItem<Hyperlink> (new Hyperlink(uncatSimilarCandidates.size() +
 					" Likely related uncategorized candidates"));
-			for(Candidate c: uncatCandidates) {
+			for(Candidate c: candidate.getSimilarCandidatesInFreq()) {
 				String fileStr = c.getPngFilePath();
 				Hyperlink link = new Hyperlink(fileStr);
-				link.setText(c.getBeamP0DMString());
+				String similarCandInfo = c.getBeamP0DMString();
+				String ratios = String.format("%.5f %.5f %s",Math.abs(c.getOptF0() / candidate.getOptF0()), 
+						Math.abs(candidate.getOptF0() / c.getOptF0()), c.getCandidateType());
+
+				link.setText(similarCandInfo + " " + ratios);
 				link.setOnAction(e ->
 					getHostServices().showDocument(new File(baseDir.getAbsolutePath() + File.separator + fileStr).toURI().toString()));
 				TreeItem<Hyperlink> item = new TreeItem<Hyperlink>(link);
@@ -1053,8 +1024,7 @@ public class CandyJar extends Application implements Constants {
 						if(toggle != null && toggle.isSelected()) {
 							
 							CANDIDATE_TYPE type = (CANDIDATE_TYPE) toggle.getUserData();
-							
-							candidate.getSimilarCandidatesInFreq().forEach(f -> {
+							uncatSimilarCandidates.forEach(f -> {
 								if( !onlyThisBeam.isSelected() || currentCandidate.getBeamName().equals(f.getBeamName())) {
 									f.setCandidateType(type);
 								}	
@@ -1077,9 +1047,6 @@ public class CandyJar extends Application implements Constants {
 
 			
 		}
-		
-
-		
 		
 
 		boolean addAcc = false;
@@ -1137,8 +1104,8 @@ public class CandyJar extends Application implements Constants {
 		TableColumn<Pair<String, Object>, Object> valueColumn = new TableColumn<>("Description");
 		valueColumn.setSortable(false);
 
-		nameColumn.setCellValueFactory(new PairKeyFactory());
-		valueColumn.setCellValueFactory(new PairValueFactory());
+		nameColumn.setCellValueFactory(new Helpers.PairKeyFactory());
+		valueColumn.setCellValueFactory(new Helpers.PairValueFactory());
 
 		table.getColumns().setAll(nameColumn, valueColumn);
 
@@ -1147,67 +1114,12 @@ public class CandyJar extends Application implements Constants {
 					@Override
 					public TableCell<Pair<String, Object>, Object> call(
 							TableColumn<Pair<String, Object>, Object> column) {
-						return new PairValueCell();
+						return new Helpers.PairValueCell();
 					}
 				});
 
 		diagnosticTab.setContent(table);
 
-
-	}
-
-	public void populatePulsarTabs(TabPane tabPane) {
-		
-
-		for (Pulsar pulsar : pulsarsInBeam) {
-
-			Tab tab = new Tab();
-			tab.setText(pulsar.getName());
-
-			final TableView<Pair<String, Object>> table = new TableView<>();
-			table.getItems().add(new Pair<String, Object>("RA:", new CopyableLabel(pulsar.getRa().toHHMMSS())));
-			table.getItems().add(new Pair<String, Object>("DEC:", new CopyableLabel(pulsar.getDec().toDDMMSS())));
-			
-			table.getItems().add(new Pair<String, Object>("Angular distance from Boresight:",
-					new CopyableLabel(pulsar.getDistanceFromBoresight() + " deg = " + pulsar.getDistanceFromBoresight()*3600+"\"")));
-			
-			table.getItems().add(new Pair<String, Object>("DM:",new CopyableLabel(pulsar.getDm().toString())));
-			table.getItems().add(new Pair<String, Object>("P0:", new CopyableLabel(pulsar.getP0().toString())));
-			table.getItems().add(new Pair<String, Object>("F0:", new CopyableLabel(pulsar.getF0().toString())));
-
-			String harmonics = "";
-			for (int h = -8; h <= 8; h++) {
-				harmonics += String.format("%.6f \n ", pulsar.getP0() * Math.pow(2, h));
-			}
-
-			table.getItems().add(new Pair<String, Object>("Harmonic periods:", new CopyableLabelArea(harmonics)));
-			table.getItems().add(new Pair<String, Object>("Eph:", new CopyableLabelArea(pulsar.getEphemerides())));
-
-			TableColumn<Pair<String, Object>, String> nameColumn = new TableColumn<>("Name");
-			TableColumn<Pair<String, Object>, Object> valueColumn = new TableColumn<>("Value");
-			valueColumn.setSortable(false);
-
-			nameColumn.setCellValueFactory(new PairKeyFactory());
-			valueColumn.setCellValueFactory(new PairValueFactory());
-
-			table.getColumns().setAll(nameColumn, valueColumn);
-
-			valueColumn.setCellFactory(
-					new Callback<TableColumn<Pair<String, Object>, Object>, TableCell<Pair<String, Object>, Object>>() {
-						@Override
-						public TableCell<Pair<String, Object>, Object> call(
-								TableColumn<Pair<String, Object>, Object> column) {
-							return new PairValueCell();
-						}
-					});
-
-			tab.setContent(table);
-
-			tabPane.getTabs().add(tab);
-
-		}
-
-		tabPane.setPrefWidth(200);
 
 	}
 
@@ -1442,42 +1354,44 @@ public class CandyJar extends Application implements Constants {
 
 		double width = bounds.getWidth();
 		double height = bounds.getHeight();
-
-		double min = width > height? width:height;
-
-		int widthBy2 = (int)(width - 20 - insets.getLeft() -insets.getRight())/2;// 20 pixels for clarity 
-
-		System.err.println("initial bounds height:" + height + " width:" + width);
-
-
-		pngPaneWidth = widthBy2;
+		double leftWidth = 0;
 		pngPaneHeight = (int) (height - 20 - insets.getTop() -insets.getBottom());
 
-		System.err.println("initial png height:" + pngPaneHeight + " width:" + pngPaneWidth);
+		if (pngAspectRatio == 1) {
+			int widthBy2 = (int)(width - 20 - insets.getLeft() -insets.getRight())/2;// 20 pixels for clarity 
+			System.err.println("initial bounds height: " + height + " width:" + width);
+
+			pngPaneWidth = widthBy2;
+
+			System.err.println("initial png height: " + pngPaneHeight + " width: " + pngPaneWidth);
 
 
-		pngPaneWidth = pngPaneHeight > pngPaneWidth? pngPaneWidth : pngPaneHeight; //choose the smaller of the two
-		pngPaneHeight = pngPaneWidth;
+			pngPaneWidth = pngPaneHeight > pngPaneWidth? pngPaneWidth : pngPaneHeight; //choose the smaller of the two
+			pngPaneHeight = pngPaneWidth;
 
-		System.err.println("final png height:" + pngPaneHeight + " width:" + pngPaneWidth);
+		}
+		else {
+			
+			if (1 - pngAspectRatio * pngPaneHeight/width >= maxPngOccupancy) {
+				pngPaneWidth = (int)(pngAspectRatio * pngPaneHeight) - 20;
+			}
+			else {
+				pngPaneWidth = (int) (maxPngOccupancy * width)- 20; 
+				pngPaneHeight = (int) ((maxPngOccupancy * width) / pngAspectRatio);
+			}
+			
 
-		//		if(min > 2 * Constants.DEFAULT_IMAGE_HEIGHT) {
-		//			pngPaneHeight = pngPaneWidth = Constants.DEFAULT_IMAGE_HEIGHT;
-		//		}
-		//		else {
-		//			pngPaneHeight = (int) (height - 20 - insets.getTop() -insets.getBottom()); // 2d0 pizels for clarity 
-		//			pngPaneWidth = (int) (height - 20 - insets.getLeft() -insets.getRight()); // use height to maintain aspect ratio
-		//		}
-		//		double remainingWidth = width - insets.getLeft() -insets.getRight() - pngPaneWidth;
-
-		double remainingWidth = pngPaneWidth;
+		}
+		leftWidth = width - pngPaneWidth - 20 - insets.getLeft() -insets.getRight();
+		System.err.println("final png height: " + pngPaneHeight + " width: " + pngPaneWidth);
+	
 
 		BorderPane leftPane = new BorderPane();
 
 		double leftTopHeight = 80;
 
 		VBox leftTop = new VBox(10, controlBox);
-		leftTop.setPrefSize(remainingWidth, leftTopHeight);
+		leftTop.setPrefSize(leftWidth, leftTopHeight);
 		leftTop.setAlignment(Pos.CENTER);
 		leftPane.setTop(leftTop);
 
@@ -1486,7 +1400,7 @@ public class CandyJar extends Application implements Constants {
 
 
 		VBox leftBottom = new VBox(10, message);
-		leftBottom.setPrefSize(remainingWidth, leftBottomHeight);
+		leftBottom.setPrefSize(leftWidth, leftBottomHeight);
 		leftPane.setBottom(leftBottom);
 
 		double leftCentreHeight = pngPaneHeight - leftBottomHeight - leftTopHeight;
@@ -1494,20 +1408,22 @@ public class CandyJar extends Application implements Constants {
 		beamMapChart.setMinHeight(0.5*leftCentreHeight);
 		
 		beamMapPane.getTabs().add(new Tab("Beam map", beamMapChart));
-
+		
 		VBox centerLeft = new VBox(10, beamMapPane, infoPane, actionsBox);
-		centerLeft.setPrefSize(remainingWidth, leftCentreHeight);
+		centerLeft.setPrefSize(leftWidth, leftCentreHeight);
 		VBox.setVgrow(centerLeft, Priority.ALWAYS);
-
 		leftPane.setCenter(centerLeft);
+		
 
 		mainBorderPane.setLeft(leftPane);
 
-		imageViewHBox.getChildren().add(addGesture(imageView));
+		imageViewHBox.getChildren().add(Helpers.addGesture(imageView));
 		imageViewHBox.setPrefSize(pngPaneWidth, pngPaneHeight);
 
 		VBox rightPane = new VBox(10, imageViewHBox);
 		rightPane.setPrefSize(pngPaneWidth, pngPaneHeight);
+		rightPane.setAlignment(Pos.BASELINE_CENTER);
+		VBox.setVgrow(rightPane, Priority.NEVER);
 
 		mainBorderPane.setRight(rightPane);
 
@@ -1588,30 +1504,10 @@ public class CandyJar extends Application implements Constants {
 
 	}
 
-
-	public void checkSimilarity(List<Candidate> candidates) {
-
-		for(Candidate c1: candidates) {
-
-			for(Candidate c2: candidates) {
-
-
-				if (c1.isSimilarTo(c2)) { 
-					if(!c1.equals(c2)) {
-						c1.getSimilarCandidatesInFreq().add(c2);
-
-					}
-					
-				}
-
-
-			}
-
-		}
-
-	}
-
-
+	
+	
+	
+	/* Command line parsing */
 
 	static CommandLineParser parser = new DefaultParser();
 	static Options options = new Options();
@@ -1625,7 +1521,7 @@ public class CandyJar extends Application implements Constants {
 
 		LOGGER.atDebug().addArgument("test");
 
-		System.err.println("*************************Candy Jar V2.2*******************************");
+		System.err.println("*************************Candy Jar V2.3*******************************");
 
 		if(System.getenv("PSRCAT_DIR") != null) {
 			PsrcatConstants.psrcatDBs.add(System.getenv("PSRCAT_DIR") + File.separator + "psrcat.db");
@@ -1636,13 +1532,13 @@ public class CandyJar extends Application implements Constants {
 		Locale.setDefault(Locale.US);
 
 		Option selectPrimaryScreen  = new Option("s1","primary_screen", true, "Choose primary screen to open the application in. "
-				+ "The application opens full screen by default. You can provide an optional custom resolution if you like, of the format: <screen—num>:widthxheight. Eg: 1:1920x1080 will open the application on"
-				+ "your first screen, with the resolution of 1920x1080");
+				+ "The application opens full screen by default. You can provide an optional custom size if you like, of the format: <screen—num>:widthxheight. Eg: 1:1920x1080 will open the application on"
+				+ "your first screen, with the size of 1920x1080");
 		Option selectSecondaryScreen  = new Option("s2","secondary_screen", true, "Choose secondary screen to open the application in. "
 				+ "You can provide custom resolution like for screen 1");
 		Option numCharts = new Option("n","num_charts", true, "Number of charts needed on the secondary screen (Min:"+ minNumCharts+", max:"+ maxNumCharts+")");
 		Option help = new Option("h","help",false, "show this help message");
-		Option listScreens = new Option("l","list_screens",false, "List available screens");
+		Option listScreens = new Option("l","list_screens",false, "List available screens and exit.");
 
 		Option addPsrcatDB = new Option("d","add_psrcat_db",true, "Add a psrcat database to get known pulsars from. Currently only takes pulsars with positions in RA/DEC and in correct hms/dms format");
 
@@ -1651,6 +1547,19 @@ public class CandyJar extends Application implements Constants {
 		
 		Option knownPulsarRadius = new Option("r", "radius", true, "Add tabs for known pulsars within this radius from boresight"
 				+ " Default:  " + CandyJar.knownPulsarRadius);
+		
+		Option crossMatchRationale = new Option("x", "crossmatch_rationale", true, "How to cross_match candidates? Valid entries: NONE for no cross match at all, [num]:threshold"
+				+ " Default:  " + CandyJar.crossMatchRationale);
+		
+		Option aspectRatio = new Option("a", "aspect_ratio", true, "aspect ratio of the PNGs. Valid entries: PULSARX, PRESTO, <float value>"
+				+ " Default: " + CandyJar.pngAspectRatio);
+		
+		Option maxPngOccupancy = new Option("p", "png_occupancy", true, "fraction of application width"
+				+ "allocated for PNG. Should be between 0.25 and 0.75."
+				+ " Default: " + CandyJar.maxPngOccupancy);
+		Option compareMeta = new Option( "get_close_beams", true, "Compare meta files and provide close beams in metafile2 for each beam in metafile1");
+		//compareMeta.setArgs(2);
+		//compareMeta.setValueSeparator(',');
 
 		options.addOption(selectPrimaryScreen);
 		options.addOption(selectSecondaryScreen);
@@ -1660,6 +1569,9 @@ public class CandyJar extends Application implements Constants {
 		options.addOption(numCharts);
 		options.addOption(extendPng);
 		options.addOption(knownPulsarRadius);
+		options.addOption(aspectRatio);
+		options.addOption(maxPngOccupancy);
+		options.addOption(compareMeta);
 
 		try{
 
@@ -1706,7 +1618,7 @@ public class CandyJar extends Application implements Constants {
 
 
 				String stringValue = getValue(selectPrimaryScreen);
-				CandyJar.primaryScreenBounds = parseScreenInput(stringValue);
+				CandyJar.primaryScreenBounds = Helpers.parseScreenInput(stringValue);
 				
 				System.err.println("Okay, Using primary screen bounds:" + CandyJar.primaryScreenBounds);
 
@@ -1716,7 +1628,7 @@ public class CandyJar extends Application implements Constants {
 			if(hasOption(selectSecondaryScreen)) {
 
 				String stringValue = getValue(selectSecondaryScreen);
-				CandyJar.secondaryScreenBounds = parseScreenInput(stringValue);
+				CandyJar.secondaryScreenBounds = Helpers.parseScreenInput(stringValue);
 				
 				System.err.println("Okay, Using secondary screen bounds:" + CandyJar.secondaryScreenBounds);
 				
@@ -1735,6 +1647,36 @@ public class CandyJar extends Application implements Constants {
 			if(hasOption(knownPulsarRadius)) {
 				String value = getValue(knownPulsarRadius);
 				CandyJar.knownPulsarRadius = Double.parseDouble(value);
+			}			
+			if(hasOption(maxPngOccupancy)) {
+				String value = getValue(maxPngOccupancy);
+				Double dVal = Double.parseDouble(value);
+				if (dVal < 0.25  || dVal > 0.75) {
+					System.err.println("Max PNG occupancy should be between 0.25 to 0.75");
+					help();
+					System.exit(0);
+				}
+				CandyJar.maxPngOccupancy = Double.parseDouble(value);
+			}
+			if(hasOption(aspectRatio)) {
+				String value = getValue(aspectRatio);
+				if (value.equals("PULSARX")){
+					CandyJar.pngAspectRatio = 1.0;
+				}
+				else if (value.equals("PRESTO")){
+					CandyJar.pngAspectRatio = 1.41;
+				}
+				else {
+				CandyJar.pngAspectRatio = Double.parseDouble(value);
+				}
+				System.err.println("Using aspect ratio: " + CandyJar.pngAspectRatio);
+			}
+			
+			if(hasOption(compareMeta)) {
+				String[] values = getValue(compareMeta).split(",");
+				System.err.println(values);
+				GetCloseBeams.getCloseBeams(values[0], values[1]);
+				System.exit(0);
 			}
 			
 		}catch(Exception e){
@@ -1765,93 +1707,7 @@ public class CandyJar extends Application implements Constants {
 
 
 
-	public static Rectangle2D parseScreenInput(String strValue) throws InvalidInputException{
-
-
-		Integer screenNum = null;
-		Integer width = null;
-		Integer height = null;
-		try {
-
-			if(strValue.contains(":")) {
-
-
-				String[] chunks = strValue.split(":");
-
-				screenNum = Integer.parseInt(chunks[0]);
-
-				String[] wh = chunks[1].split("x");
-
-				width = Integer.parseInt(wh[0]);
-				height = Integer.parseInt(wh[1]);
-
-			}
-
-			else {
-				screenNum = Integer.parseInt(strValue);
-			}
-
-
-
-			if(screenNum < 0 || screenNum > Screen.getScreens().size()) {
-
-				System.err.println("Enter valid screen number.");
-				System.exit(0);
-
-			}
-
-			Screen screen = Screen.getScreens().get(screenNum-1);
-
-			Rectangle2D screenBounds = screen.getBounds();
-
-			Rectangle2D rectangle2d = null;
-
-			if(width ==null) width = (int) screenBounds.getWidth();
-			if(height ==null) height = (int) screenBounds.getHeight();
-
-
-			rectangle2d = new Rectangle2D(screenBounds.getMinX(), screenBounds.getMinY(), width, height);
-
-			System.err.println(rectangle2d + " " + screen.getBounds().getWidth() + " " + screen.getBounds().getHeight());
-
-			return rectangle2d;
-
-
-		} catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-			throw new InvalidInputException("Invalid screen value format: " + strValue + ". check help for syntax.");
-		}
-
-
-	}
-
-
-
-	private GesturePane addGesture(Node n) {
-		GesturePane pane = new GesturePane(n);
-		
-		pane.setOnMouseClicked(e -> {
-			Point2D pivotOnTarget = pane.targetPointAt(new Point2D(e.getX(), e.getY()))
-                    .orElse(pane.targetPointAtViewportCentre());
-			if (e.getButton() == MouseButton.PRIMARY && e.getClickCount() == 2) {
-				
-				// increment of scale makes more sense exponentially instead of linearly 
-				pane.animate(Duration.millis(200))
-						.interpolateWith(Interpolator.EASE_BOTH)
-						.zoomBy(pane.getCurrentScale(), pivotOnTarget);
-			}
-			if (e.getButton() == MouseButton.SECONDARY) {
-				pane.zoomTo(1,pivotOnTarget);
-				
-			}
-		});
-		return pane;
-	}
-
-
-
-
-
-
+	
 
 	/* Code for chart zooming */
 
@@ -1913,13 +1769,13 @@ public class CandyJar extends Application implements Constants {
 
 						NumberAxis yAxis = (NumberAxis) beamMapChart.getYAxis();
 						double Tgap = yAxis.getHeight() / (yAxis.getUpperBound() - yAxis.getLowerBound());
-						double axisShift = getSceneShiftY(yAxis);
+						double axisShift = Helpers.getSceneShiftY(yAxis);
 						double ptY = yAxis.getUpperBound() - ((Y - axisShift) / Tgap);
 
 						NumberAxis xAxis = (NumberAxis) beamMapChart.getXAxis();
 
 						Tgap = xAxis.getWidth() / (xAxis.getUpperBound() - xAxis.getLowerBound());
-						axisShift = getSceneShiftX(xAxis);
+						axisShift = Helpers.getSceneShiftX(xAxis);
 						double ptX = ((X - axisShift) / Tgap) + xAxis.getLowerBound();
 
 					} else {
@@ -1931,7 +1787,7 @@ public class CandyJar extends Application implements Constants {
 						// Zoom in Y-axis by changing bound range.
 						NumberAxis yAxis = (NumberAxis) beamMapChart.getYAxis();
 						Tgap = yAxis.getHeight() / (yAxis.getUpperBound() - yAxis.getLowerBound());
-						axisShift = getSceneShiftY(yAxis);
+						axisShift = Helpers.getSceneShiftY(yAxis);
 						yaxisShift = axisShift;
 
 						newUpperBound = yAxis.getUpperBound() - ((rectinitY.get() - axisShift) / Tgap);
@@ -1951,7 +1807,7 @@ public class CandyJar extends Application implements Constants {
 						NumberAxis xAxis = (NumberAxis) beamMapChart.getXAxis();
 
 						Tgap = xAxis.getWidth() / (xAxis.getUpperBound() - xAxis.getLowerBound());
-						axisShift = getSceneShiftX(xAxis);
+						axisShift = Helpers.getSceneShiftX(xAxis);
 						xaxisShift = axisShift;
 
 						newLowerBound = ((rectinitX.get() - axisShift) / Tgap) + xAxis.getLowerBound();
@@ -1978,23 +1834,7 @@ public class CandyJar extends Application implements Constants {
 
 	};
 
-	private static double getSceneShiftX(Node node) {
-		double shift = 0;
-		do {
-			shift += node.getLayoutX();
-			node = node.getParent();
-		} while (node != null);
-		return shift;
-	}
-
-	private static double getSceneShiftY(Node node) {
-		double shift = 0;
-		do {
-			shift += node.getLayoutY();
-			node = node.getParent();
-		} while (node != null);
-		return shift;
-	}
+	
 
 
 	public Button getFilterCandidates() {
@@ -2007,67 +1847,6 @@ public class CandyJar extends Application implements Constants {
 	}
 
 
-	class PairKeyFactory
-	implements Callback<TableColumn.CellDataFeatures<Pair<String, Object>, String>, ObservableValue<String>> {
-		@Override
-		public ObservableValue<String> call(TableColumn.CellDataFeatures<Pair<String, Object>, String> data) {
-			return new ReadOnlyObjectWrapper<>(data.getValue().getKey());
-		}
-	}
-
-	class PairValueFactory
-	implements Callback<TableColumn.CellDataFeatures<Pair<String, Object>, Object>, ObservableValue<Object>> {
-		@SuppressWarnings("unchecked")
-		@Override
-		public ObservableValue<Object> call(TableColumn.CellDataFeatures<Pair<String, Object>, Object> data) {
-			Object value = data.getValue().getValue();
-			return (value instanceof ObservableValue) ? (ObservableValue) value : new ReadOnlyObjectWrapper<>(value);
-		}
-	}
-
-	class PairValueCell extends TableCell<Pair<String, Object>, Object> {
-		@Override
-		protected void updateItem(Object item, boolean empty) {
-			super.updateItem(item, empty);
-
-			if (item != null) {
-				if (item instanceof String) {
-					setText((String) item);
-					setGraphic(null);
-				} else if (item instanceof Integer) {
-					setText(Integer.toString((Integer) item));
-					setGraphic(null);
-				} else if (item instanceof Boolean) {
-					CheckBox checkBox = new CheckBox();
-					checkBox.setSelected((boolean) item);
-					setGraphic(checkBox);
-				} else if (item instanceof Image) {
-					setText(null);
-					ImageView imageView = new ImageView((Image) item);
-					imageView.setFitWidth(100);
-					imageView.setPreserveRatio(true);
-					imageView.setSmooth(true);
-					setGraphic(imageView);
-				} else if (item instanceof Node) {
-					setText(null);
-					setGraphic((Node) item);
-				} else if   (item instanceof Number) {
-					setText(item.toString());
-					setGraphic(null);
-					
-				} else {
-					setText(item.toString());
-					setGraphic(null);
-				}
-			} else {
-				setText(null);
-				setGraphic(null);
-			}
-		}
-	}
-
-
-
-
+	
 
 }
