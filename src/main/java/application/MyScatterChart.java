@@ -5,10 +5,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.function.UnaryOperator;
 
 import constants.Constants;
 import data_holders.Beam;
+import data_holders.MetaFile;
+import data_holders.Pulsar;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
@@ -19,6 +22,8 @@ import javafx.scene.Node;
 import javafx.scene.chart.Axis;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.ScatterChart;
+import javafx.scene.chart.XYChart;
+import javafx.scene.chart.XYChart.Data;
 import javafx.scene.control.Tooltip;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
@@ -199,5 +204,43 @@ public class MyScatterChart extends ScatterChart<Number, Number> {
 		super.layoutPlotChildren();
 	}
 
+	
+	public void addDefaultMap(MetaFile metaFile, List<Pulsar> pulsars) {
+
+		this.getData().clear();
+
+		XYChart.Series<Number, Number> beamPositions = new XYChart.Series<Number, Number>();
+		beamPositions.setName(Constants.DEFAULT_BEAM_MAP);
+
+//		for (Entry<String, Beam> e : metaFile.getBeams().entrySet()) {
+//			Beam b = e.getValue();
+//			Point2D.Double p = CoordUtils.getPixelCoordinates(metaFile.getBoresight(), b);
+//			Data<Number, Number> d = new Data<Number, Number>(b.getRaPixel().getDecimalHourValue(), b.getDecPixel().getDegreeValue());
+//			d.setExtraValue(b);
+//			beamPositions.getData().add(d);
+//		}
+		for (Entry<String, Beam> e : metaFile.getBeams().entrySet()) {
+			Beam b = e.getValue();
+			Data<Number, Number> d = new Data<Number, Number>(b.getRa().getDecimalHourValue(), b.getDec().getDegreeValue());
+			d.setExtraValue(b);
+			beamPositions.getData().add(d);
+		}
+
+
+		XYChart.Series<Number, Number> pulsarPositions = new XYChart.Series<Number, Number>();
+
+		for (Pulsar pulsar : pulsars) {
+
+			Data<Number, Number> d = new Data<Number, Number>(pulsar.getRa().getDecimalHourValue(),
+					pulsar.getDec().getDegreeValue());
+			pulsarPositions.getData().add(d);
+
+		}
+		pulsarPositions.setName(Constants.KNOWN_PULSAR_BEAM_MAP);
+
+		this.getData().add(beamPositions);
+		//chart.getData().add(pulsarPositions);
+
+	}
 	
 }
