@@ -41,9 +41,10 @@ public interface CandidateFileConstants {
 	String  metafile_path = "metafile_path";
 	String  filterbank_path = "filterbank_path";
 	String  candidate_tarball_path = "candidate_tarball_path"; 
+	String  tobs = "tobs";
 	
 	List<String> csvParams = Arrays.asList(new String[] {pointing_id,beam_id,beam_name,source_name,ra,dec,gl,gb,mjd_start,utc_start,
 			f0_user,f0_opt,f0_opt_err,f1_user,f1_opt,f1_opt_err,f2_opt, f2_opt_err, f2_user, acc_user,acc_opt,acc_opt_err,dm_user,dm_opt,dm_opt_err,sn_fft,
-			sn_fold,pepoch,maxdm_ymw16,dist_ymw16,pics_trapum_ter5,pics_palfa,png_path,metafile_path,filterbank_path,candidate_tarball_path});
+			sn_fold,pepoch,maxdm_ymw16,dist_ymw16,pics_trapum_ter5,pics_palfa,png_path,metafile_path,filterbank_path,candidate_tarball_path, tobs});
 
 }
