@@ -55,7 +55,7 @@ public class CandidateFileReader implements CandidateFileConstants {
 			.forEach(f -> {
 				counter.getAndIncrement();
 				String[] chunks = f.split(",");
-				Candidate c = new Candidate();
+  				Candidate c = new Candidate();
 				c.setLineNum(counter.toString());
 				if(headerPositions.getOrDefault(pointing_id, -1) != -1) c.setPointingID(Integer.parseInt(chunks[headerPositions.get(pointing_id)]));
 				if(headerPositions.getOrDefault(beam_id, -1) != -1) c.setBeamID(Integer.parseInt(chunks[headerPositions.get(beam_id)]));
@@ -95,6 +95,7 @@ public class CandidateFileReader implements CandidateFileConstants {
 				if(headerPositions.getOrDefault(metafile_path, -1) != -1) c.setMetaFilePath(chunks[headerPositions.get(metafile_path)]);
 				if(headerPositions.getOrDefault(filterbank_path, -1) != -1) c.setFilterbankPath(chunks[headerPositions.get(filterbank_path)]);
 				if(headerPositions.getOrDefault(candidate_tarball_path, -1) != -1) c.setTarballPath(chunks[headerPositions.get(candidate_tarball_path)]);
+				if(headerPositions.getOrDefault(tobs, -1) != -1) c.setTobs(Double.parseDouble(chunks[headerPositions.get(tobs)]));
 				
 				c.setCandidateType(CANDIDATE_TYPE.UNCAT);
 
@@ -108,10 +109,12 @@ public class CandidateFileReader implements CandidateFileConstants {
 				}
 				c.setMetaFile(metaFile);
 				c.setBeam(metaFile.getBeams().get(c.getBeamName()));
-				
+				c.setCsvLine(f);
 				candidates.add(c);
 				
 			});
+			
+			System.err.println("Read all candidates...");
 			
 			return candidates;
 			
