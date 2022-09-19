@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
 import constants.Constants;
 import data_holders.Candidate.CANDIDATE_TYPE;
@@ -58,7 +59,7 @@ public class Candidate {
 	private String metaFilePath;
 	private String filterbankPath;
 	private String tarballPath;
-	
+	private Double tobs;
 	private boolean isPeriodAtStart;
 
 	private CANDIDATE_TYPE candidateType;
@@ -74,6 +75,8 @@ public class Candidate {
 	MetaFile metaFile;
 	
 	private String lineNum;
+	
+	private String csvLine;
 	
 	private boolean visible;
 	
@@ -109,15 +112,18 @@ public class Candidate {
 		
 	}
 
+	
 
 	public boolean isSimilarTo(Candidate c2) {
 		
 
 		double minF0 = this.getOptF0() - 1e-4;
 		double maxF0 = this.getOptF0() + 1e-4;
+		
 
-		for(int i=1; i<=32; i++) {
-			for(int j=1;j<=32;j++) {
+
+		for(int i=1; i<=16; i++) {
+			for(int j=1;j<=16;j++) {
 				double harmonic = ((double)i)/j;
 				if(c2.getOptF0() >= harmonic * minF0 && c2.getOptF0() <= harmonic * maxF0 ) {
 					return true;
@@ -144,50 +150,6 @@ public class Candidate {
 		
 	}
 	
-	@Deprecated
-	public Candidate(String line) {
-		this();
-		String[] chunks = line.strip().split(",");
-		
-		int i=0;
-		this.pointingID = Integer.parseInt(chunks[i++]);
-		this.beamID = Integer.parseInt(chunks[i++]);
-		this.beamName = chunks[i++];;
-		this.sourceName = chunks[i++];;
-		this.ra = new Angle(chunks[i++], Angle.HHMMSS);
-		this.dec = new Angle(chunks[i++], Angle.DDMMSS);
-		this.gl = new Angle(chunks[i++], Angle.DEG);
-		this.gb = new Angle(chunks[i++], Angle.DEG);
-		this.startMJD = Double.parseDouble(chunks[i++]);
-		this.startUTC = Utilities.getUTCLocalDateTime(chunks[i++], DateTimeFormatter.ISO_DATE_TIME);
-		this.userF0 = Double.parseDouble(chunks[i++]);
-		this.optF0 = Double.parseDouble(chunks[i++]);
-		this.optF0Err = Double.parseDouble(chunks[i++]);
-		this.userF1 = Double.parseDouble(chunks[i++]);
-		this.optF1 = Double.parseDouble(chunks[i++]);
-		this.optF1Err = Double.parseDouble(chunks[i++]);
-		this.userAcc = Double.parseDouble(chunks[i++]);
-		this.optAcc = Double.parseDouble(chunks[i++]);
-		this.optAccErr = Double.parseDouble(chunks[i++]);
-		this.userDM = Double.parseDouble(chunks[i++]);
-		this.optDM = Double.parseDouble(chunks[i++]);
-		this.optDMErr = Double.parseDouble(chunks[i++]);
-		this.fftSNR = Double.parseDouble(chunks[i++]);
-		this.foldSNR = Double.parseDouble(chunks[i++]);
-		this.peopoch = Double.parseDouble(chunks[i++]);
-		this.maxDMYMW16 = Double.parseDouble(chunks[i++]);
-		this.distYMW16 = Double.parseDouble(chunks[i++]);
-		this.picsScoreTrapum = Double.parseDouble(chunks[i++]);
-		this.picsScorePALFA = Double.parseDouble(chunks[i++]);
-		this.pngFilePath = chunks[i++];
-		this.metaFilePath = chunks[i++];
-		this.filterbankPath = chunks[i++];
-		this.tarballPath = chunks[i++];
-		
-		this.utcString = Utilities.getUTCString(startUTC, DateTimeFormatter.ISO_DATE_TIME);
-
-	}
-	
 	public String getF0DMString() {
 		return String.format("%8.5f %4.2f", this.optF0, this.optDM);
 	}
@@ -197,7 +159,7 @@ public class Candidate {
 	}
 	
 	public String getBeamP0DMString() {
-		return String.format("%s %8.5f %4.2f", this.beamName.replace("fbf", ""), this.getOptP0(), this.optDM);
+		return String.format("%s %8.4f %4.2f", this.beamName.replace("cfbf00", ""), this.getOptP0()* 1000.0, this.optDM);
 	}
 	@Override
 	public String toString() {
@@ -573,6 +535,18 @@ public class Candidate {
 		return metaFile;
 	}
 
+	
+	public String getCsvLine() {
+		return csvLine;
+	}
+	
+
+	public void setCsvLine(String csvLine) {
+		this.csvLine = csvLine;
+	}
+
+
+
 
 	public void setMetaFile(MetaFile metaFile) {
 		this.metaFile = metaFile;
@@ -605,9 +579,21 @@ public class Candidate {
 		return new Tuple<Double, Double>(min, max);
 		
 	}
+	
 
-	
-	
+	public Double getTobs() {
+		return tobs;
+	}
+
+	public void setTobs(Double tobs) {
+		this.tobs = tobs;
+	}
+
+	public Tuple<Double, Double> getTobsTuple() {
+		return new Tuple<Double, Double>(getTobs(),null);
+	}
+
+
 	private static Map<String, Function<Candidate, Double>>  sortableParameters() {
 		Map<String, Function<Candidate, Double>> sortableValuesMap = 
 				new LinkedHashMap<String, Function<Candidate, Double>>();
@@ -622,6 +608,7 @@ public class Candidate {
 		sortableValuesMap.put("PICS_PALFA", Candidate::getPicsScorePALFA);
 		sortableValuesMap.put("BEAM_NUM", Candidate::getBeamNumber);
 		sortableValuesMap.put("BORESIGHT_ANG_DIST", Candidate::getAngleFromBoresight);
+		sortableValuesMap.put("TOBS", Candidate::getTobs);
 		sortableValuesMap.put("CSV_LINE", Candidate::getLineNumDouble);
 
 		return sortableValuesMap;
@@ -639,6 +626,7 @@ public class Candidate {
 		plottableValuesMap.put("ACC", Candidate::getOptAccTuple);
 		plottableValuesMap.put("FOLD_SNR", Candidate::getFoldSNRTuple);
 		plottableValuesMap.put("FFT_SNR", Candidate::getFftSNRTuple);
+		plottableValuesMap.put("TOBS", Candidate::getTobsTuple);
 		plottableValuesMap.put("PICS_TRAPUM", Candidate::getPicsTrapumTuple);
 		plottableValuesMap.put("PICS_PALFA", Candidate::getPicsPALFATuple);
 		plottableValuesMap.put("BEAM_NUM", Candidate::getBeamNumberTuple);
@@ -665,6 +653,7 @@ public class Candidate {
 		unitsMap.put("RA", "hours");
 		unitsMap.put("DEC", "degrees");
 		unitsMap.put("BORESIGHT_ANG_DIST", "degrees");
+		unitsMap.put("TOBS", "seconds");
 		
 		
 		return unitsMap;
