@@ -10,8 +10,9 @@ public class CopyableLabel extends TextField {
 		this.getStyleClass().add("copyable-label");
 	}
 	
+	
 	public CopyableLabel(Object obj) {
-		this(obj.toString());
+		this(obj ==null? "text": obj.toString());
 
 	}
 	
