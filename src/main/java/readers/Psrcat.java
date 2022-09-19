@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,6 +36,33 @@ public class Psrcat implements PsrcatConstants {
 			throw e;
 		}
 		
+	}
+	
+	public void readPersonalPulsarList(String fileName) {
+		try {
+			File file = new File(fileName);
+			if(file.exists()) {
+				List<String> lines =  Files.readAllLines(new File(fileName).toPath());
+				for (String line: lines) {
+					if(line.isBlank() || line.startsWith("#")) continue;
+					
+					String[] chunks = line.strip().split("\\s+");
+					Pulsar pulsar = new Pulsar();
+					pulsar.setName(chunks[0]+ "_L");
+					pulsar.setRa(new Angle(chunks[1], Angle.HHMMSS));
+					pulsar.setDec(new Angle(chunks[2], Angle.DDMMSS));
+					pulsar.setP0(Double.parseDouble(chunks[3]));
+					pulsar.setDm(Double.parseDouble(chunks[4]));
+					pulsar.setBinary(Boolean.parseBoolean(chunks[5]));
+					pulsarMap.put(chunks[0]+"_L", pulsar);
+					
+				}
+				System.err.println("Successfully read " + fileName);
+			}
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public List<Pulsar>  getPulsarsInBeam(Angle raBoresight, Angle decBoresight, Angle radius) {
