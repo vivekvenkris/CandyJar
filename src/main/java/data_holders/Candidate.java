@@ -545,11 +545,12 @@ public class Candidate {
 		this.csvLine = csvLine;
 	}
 
-
-
-
 	public void setMetaFile(MetaFile metaFile) {
 		this.metaFile = metaFile;
+	}
+
+	public String getFilterbankPathGlobbed() {
+		return this.filterbankPath.substring(0, filterbankPath.lastIndexOf("/")) + "/*.fil";
 	}
 	
 	public double getAngleFromBoresight() {
