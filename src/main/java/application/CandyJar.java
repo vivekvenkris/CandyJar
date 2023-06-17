@@ -152,9 +152,13 @@ public class CandyJar extends Application implements Constants {
 
 	/*Top Left: Load directory and CSV */
 	File baseDir = null;
-	TextAndButton rootDirTB = new TextAndButton(null,"Results directory","Get pointings", 10);
+	TextAndButton rootDirTB = new TextAndButton(null,"Results directory","Get", 10);
+
 	Button fileSelectButton = new Button("...");
 	final Button loadClassification = new Button("Load classification");
+
+	Button nextUTC = new Button(">>");
+	Button prevUTC = new Button("<<");
 
 
 	/* Top left: Filter and sort candidates */
@@ -174,7 +178,8 @@ public class CandyJar extends Application implements Constants {
 
 
 	final HBox candidateFilterHBox = new HBox(10, filterTypes, sortBox, sortOrder, filterCandidates);
-	final VBox controlBox = new VBox(10, new HBox(10, rootDirTB.getTextField(),fileSelectButton,rootDirTB.getButton(), loadClassification),	new HBox(10, utcBox, candidateFilterHBox));
+	final VBox controlBox = new VBox(10, new HBox(10, rootDirTB.getTextField(),fileSelectButton,rootDirTB.getButton(), loadClassification),	
+									new HBox(10, prevUTC, utcBox, nextUTC, candidateFilterHBox));
 
 
 	/* Left Middle: Beam Map and tabbed pane */
@@ -188,6 +193,7 @@ public class CandyJar extends Application implements Constants {
 	final TabPane infoPane = new TabPane();
 	final Tab candidateTab = new Tab("Candidate Info");
 	final Tab diagnosticTab = new Tab("Diagnostics");
+	
 
 
 	/* Bottom left: message label, controls  and filters*/
@@ -270,6 +276,8 @@ public class CandyJar extends Application implements Constants {
 	public void initialise() {
 		
 		beamMapChart.init();
+
+		this.rootDirTB.getButton().setTooltip(new Tooltip("Load results directory"));
 	
 		utcs.clear();
 		utcBox.getSelectionModel().clearSelection();
@@ -300,6 +308,8 @@ public class CandyJar extends Application implements Constants {
 		//candidateCategories.getButtons().addAll(rfi, noise, tier1, tier2, knownPulsar);
 		candidateCategories.getStyleClass().add(SegmentedButton.STYLE_CLASS_DARK);
 		loadClassification.setVisible(false);
+		prevUTC.setVisible(false);
+		nextUTC.setVisible(false);
 		utcBox.setVisible(false);
 		beamMapChart.setVisible(false);
 		beamMapPane.setVisible(false);
@@ -452,6 +462,12 @@ public class CandyJar extends Application implements Constants {
 				sortOrder.setVisible(true);
 				candidatesVisible = false;
 
+				prevUTC.setVisible(true);
+				nextUTC.setVisible(true);
+				prevUTC.setTooltip(new Tooltip("Go to previous UTC"));
+				nextUTC.setTooltip(new Tooltip("Go to next UTC"));
+
+
 				
 				System.err.println("UTC:" + utcString);
 
@@ -566,6 +582,34 @@ public class CandyJar extends Application implements Constants {
 					message.setText("No candidate PNGs for your filter type / UTC");
 				}
 
+			}
+		});
+
+		prevUTC.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event){
+				int currentUTCidx = utcBox.getItems().indexOf(utcBox.getValue());
+				if (currentUTCidx == 0) {
+					message.setText("This is the first UTC.");
+					return;
+				}
+				String prevUTCString = utcBox.getItems().get(currentUTCidx - 1);
+				utcBox.setValue(prevUTCString);
+				filterCandidates.fire();
+			}
+		});
+
+		nextUTC.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event){
+				int currentUTCidx = utcBox.getItems().indexOf(utcBox.getValue());
+				if (currentUTCidx == utcBox.getItems().size() - 1) {
+					message.setText("This is the last UTC.");
+					return;
+				}
+				String nextUTCString = utcBox.getItems().get(currentUTCidx + 1);
+				utcBox.setValue(nextUTCString);
+				filterCandidates.fire();
 			}
 		});
 
@@ -1057,11 +1101,16 @@ public class CandyJar extends Application implements Constants {
 		Button dspsrButton = new Button("dspsr");
 		
 		String outputStr = candidate.getSourceName()+"_"+ candidate.getBeamName() +"_" + candidate.getLineNum();
-		String prepfoldTextGen = "prepfold" +  " -fixchi -dm " + candidate.getOptDM() + " -nsub 64 -npart 64 -f " + candidate.getF0AtStart();
+		String filtoolTextGen="filtool -t 12 -i 0 --telescope meerkat -z zdot --cont -o " + outputStr + " -f " + candidate.getFilterbankPathGlobbed() + ";";
+
+		String cleanedFil= outputStr + "*.fil";
+
+		String prepfoldTextGen = filtoolTextGen + "prepfold" +  " -topo -fixchi -dm " + candidate.getOptDM() + " -nsub 64 -npart 64 -f " + candidate.getF0AtStart();
 		if(addAcc) prepfoldTextGen += " -fd " + candidate.getOptF1();
-		prepfoldTextGen +=	" -o " + outputStr + " " + candidate.getFilterbankPath();			 
+		prepfoldTextGen +=	" -o " + outputStr + " " + cleanedFil;			 
+
 						
-		String pulsarxTextGen = "psrfold_fil -v -t 4 --template /home/psr/software/PulsarX/include/template/meerkat_fold.template "
+		String pulsarxTextGen = "psrfold_fil -v -t 4 --template /home/psr/software/PulsarX/include/template/meerkat_fold.template"
 				+ "-L 10 --clfd 2.0 -z zdot -n 64 -b 64 --dspsr --plotx --dm " + candidate.getOptDM() + " --f0 " + + candidate.getOptF0();		
 		if(addAcc)		pulsarxTextGen+= " -acc " + candidate.getOptAcc();		
 		pulsarxTextGen+= " -o " + outputStr + " -f" + candidate.getFilterbankPath() ;
