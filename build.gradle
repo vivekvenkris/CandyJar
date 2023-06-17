@@ -25,7 +25,7 @@ repositories {
     // You can declare any Maven/Ivy/file repository here.
     mavenCentral()
     maven{
-       url "http://www.javaxt.com/maven"
+       url "https://www.javaxt.com/maven"
     }
 
 }
