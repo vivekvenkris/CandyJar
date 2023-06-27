@@ -154,6 +154,7 @@ public class CandyJar extends Application implements Constants {
 	File baseDir = null;
 	TextAndButton rootDirTB = new TextAndButton(null,"Results directory","Get", 10);
 
+
 	Button fileSelectButton = new Button("...");
 	final Button loadClassification = new Button("Load classification");
 
@@ -368,6 +369,7 @@ public class CandyJar extends Application implements Constants {
 			if(selectedDirectory ==null) return;
 			initialise();
 			rootDirTB.getTextField().setText(selectedDirectory.getAbsolutePath());
+			rootDirTB.getTextField().setEditable(false);
 			
 		});
 
@@ -1217,6 +1219,7 @@ public class CandyJar extends Application implements Constants {
 
 			case SPACE:
 				if(event.isControlDown()) {
+					
 					if(metaFile != null && metaFile.getPng()!= null) {
 						getHostServices().showDocument(metaFile.getPng().toURI().toString());
 					}
@@ -1225,6 +1228,7 @@ public class CandyJar extends Application implements Constants {
 				if(!candidatesVisible) return;
 				getHostServices().showDocument(new File( baseDir.getAbsolutePath() + File.separator + ((Candidate)imageView.getUserData()).getPngFilePath()).toURI().toString());
 				}
+			
 			default:
 				break;
 			}
