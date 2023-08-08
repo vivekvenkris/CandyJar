@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
+import constants.CandidateFileConstants;
 import constants.Constants;
 import data_holders.Candidate.CANDIDATE_TYPE;
 import de.gsi.chart.marker.DefaultMarker;
@@ -53,8 +54,9 @@ public class Candidate {
 	private Double peopoch;
 	private Double maxDMYMW16;
 	private Double distYMW16;
-	private Double picsScoreTrapum;
-	private Double picsScorePALFA;
+	private Map<String, Double> classifierScoresMap;
+	// private Double picsScoreTrapum;
+	// private Double picsScorePALFA;
 	private String pngFilePath;
 	private String metaFilePath;
 	private String filterbankPath;
@@ -83,8 +85,23 @@ public class Candidate {
 	public Double getOptP0() {
 		return 1/optF0;
 	}
-	
 
+	public void addClassifierScore(String classifier, Double score) {
+		if(this.classifierScoresMap == null) this.classifierScoresMap = new LinkedHashMap<String, Double>();
+		this.classifierScoresMap.put(classifier, score);
+	}
+
+	public Map<String, Double> getClassifierScoresMap() {
+		return classifierScoresMap;
+	}
+
+	public void setClassifierScoresMap(Map<String, Double> classifierScoresMap) {
+		this.classifierScoresMap = classifierScoresMap;
+	}
+
+	public double getClassifierScore(String classifier){
+		return this.classifierScoresMap.get(classifier);
+	}
 
 
 	public String getLineNum() {
@@ -147,6 +164,7 @@ public class Candidate {
 		
 		if(this.startMJD != null && this.peopoch !=null && Double.compare(this.peopoch, this.startMJD)<= 0) this.isPeriodAtStart = true;
 
+		this.classifierScoresMap = new LinkedHashMap<String, Double>();
 		
 	}
 	
@@ -383,21 +401,21 @@ public class Candidate {
 		this.distYMW16 = distYMW16;
 	}
 
-	public Double getPicsScoreTrapum() {
-		return picsScoreTrapum;
-	}
+	// public Double getPicsScoreTrapum() {
+	// 	return picsScoreTrapum;
+	// }
 
-	public void setPicsScoreTrapum(Double picsScoreTrapum) {
-		this.picsScoreTrapum = picsScoreTrapum;
-	}
+	// public void setPicsScoreTrapum(Double picsScoreTrapum) {
+	// 	this.picsScoreTrapum = picsScoreTrapum;
+	// }
 
-	public Double getPicsScorePALFA() {
-		return picsScorePALFA;
-	}
+	// public Double getPicsScorePALFA() {
+	// 	return picsScorePALFA;
+	// }
 
-	public void setPicsScorePALFA(Double picsScorePALFA) {
-		this.picsScorePALFA = picsScorePALFA;
-	}
+	// public void setPicsScorePALFA(Double picsScorePALFA) {
+	// 	this.picsScorePALFA = picsScorePALFA;
+	// }
 	
 
 	public String getPngFilePath() {
@@ -497,13 +515,13 @@ public class Candidate {
 		return new Tuple<Double, Double>(getOptAcc(), getOptAccErr());
 	}
 	
-	public Tuple<Double, Double> getPicsPALFATuple(){
-		return new Tuple<Double, Double>(getPicsScorePALFA(),null);
-	}
+	// public Tuple<Double, Double> getPicsPALFATuple(){
+	// 	return new Tuple<Double, Double>(getPicsScorePALFA(),null);
+	// }
 
-	public Tuple<Double, Double> getPicsTrapumTuple(){
-		return new Tuple<Double, Double>(getPicsScoreTrapum(),null);
-	}
+	// public Tuple<Double, Double> getPicsTrapumTuple(){
+	// 	return new Tuple<Double, Double>(getPicsScoreTrapum(),null);
+	// }
 
 	public Tuple<Double, Double> getFoldSNRTuple(){
 		return new Tuple<Double, Double>(getFoldSNR(),null);
@@ -594,6 +612,58 @@ public class Candidate {
 		return new Tuple<Double, Double>(getTobs(),null);
 	}
 
+	public double getPicsPALFA(){
+		return this.classifierScoresMap.getOrDefault(CandidateFileConstants.pics_palfa, 0.0);
+	}
+	public double getPicsTrapumTer5(){
+		return this.classifierScoresMap.getOrDefault(CandidateFileConstants.pics_trapum_ter5, 0.0);
+	}
+	public double getPicsMLSRecall(){
+		return this.classifierScoresMap.getOrDefault(CandidateFileConstants.pics_m_LS_recall, 0.0);
+	}
+	public double getPicsPMLSFscore(){
+		return this.classifierScoresMap.getOrDefault(CandidateFileConstants.pics_pm_LS_fscore, 0.0);
+	}
+
+	public Tuple<Double, Double> getPicsPALFATuple(){
+		return new Tuple<Double, Double>(getPicsPALFA(),null);
+	}
+	public Tuple<Double, Double> getPicsTrapumTer5Tuple(){
+		return new Tuple<Double, Double>(getPicsTrapumTer5(),null);
+	}
+	public Tuple<Double, Double> getPicsMLSRecallTuple(){
+		return new Tuple<Double, Double>(getPicsMLSRecall(),null);
+	}
+	public Tuple<Double, Double> getPicsPMLSFscoreTuple(){
+		return new Tuple<Double, Double>(getPicsPMLSFscore(),null);
+	}
+
+	public static void initParamMapsWithClassifiers(List<String> classifiers) {
+
+			for (String classifier : classifiers) {
+				switch (classifier) {
+					case CandidateFileConstants.pics_palfa:
+						SORTABLE_PARAMETERS_MAP.put("PICS_PALFA", Candidate::getPicsPALFA);
+						PLOTTABLE_PARAMETERS_MAP.put("PICS_PALFA", Candidate::getPicsPALFATuple);
+						break;
+					case CandidateFileConstants.pics_trapum_ter5:
+						SORTABLE_PARAMETERS_MAP.put("PICS_TRAPUM", Candidate::getPicsTrapumTer5);
+						PLOTTABLE_PARAMETERS_MAP.put("PICS_TRAPUM", Candidate::getPicsTrapumTer5Tuple);
+						break;
+					case CandidateFileConstants.pics_m_LS_recall:
+						SORTABLE_PARAMETERS_MAP.put("PICS_M_LS_RECALL", Candidate::getPicsMLSRecall);
+						PLOTTABLE_PARAMETERS_MAP.put("PICS_M_LS_RECALL", Candidate::getPicsMLSRecallTuple);
+						break;
+					case CandidateFileConstants.pics_pm_LS_fscore:
+						SORTABLE_PARAMETERS_MAP.put("PICS_PM_LS_FSCORE", Candidate::getPicsPMLSFscore);
+						PLOTTABLE_PARAMETERS_MAP.put("PICS_PM_LS_FSCORE", Candidate::getPicsPMLSFscoreTuple);
+						break;
+				}
+
+			}
+			
+	}
+	
 
 	private static Map<String, Function<Candidate, Double>>  sortableParameters() {
 		Map<String, Function<Candidate, Double>> sortableValuesMap = 
@@ -605,12 +675,11 @@ public class Candidate {
 		sortableValuesMap.put("ACC", Candidate::getOptAcc);
 		sortableValuesMap.put("FOLD_SNR", Candidate::getFoldSNR);
 		sortableValuesMap.put("FFT_SNR", Candidate::getFftSNR);
-		sortableValuesMap.put("PICS_TRAPUM", Candidate::getPicsScoreTrapum);
-		sortableValuesMap.put("PICS_PALFA", Candidate::getPicsScorePALFA);
 		sortableValuesMap.put("BEAM_NUM", Candidate::getBeamNumber);
 		sortableValuesMap.put("BORESIGHT_ANG_DIST", Candidate::getAngleFromBoresight);
 		sortableValuesMap.put("TOBS", Candidate::getTobs);
 		sortableValuesMap.put("CSV_LINE", Candidate::getLineNumDouble);
+
 
 		return sortableValuesMap;
 	}
@@ -628,8 +697,6 @@ public class Candidate {
 		plottableValuesMap.put("FOLD_SNR", Candidate::getFoldSNRTuple);
 		plottableValuesMap.put("FFT_SNR", Candidate::getFftSNRTuple);
 		plottableValuesMap.put("TOBS", Candidate::getTobsTuple);
-		plottableValuesMap.put("PICS_TRAPUM", Candidate::getPicsTrapumTuple);
-		plottableValuesMap.put("PICS_PALFA", Candidate::getPicsPALFATuple);
 		plottableValuesMap.put("BEAM_NUM", Candidate::getBeamNumberTuple);
 		plottableValuesMap.put("RA", Candidate::getRaTuple);
 		plottableValuesMap.put("DEC", Candidate::getDecTuple);
@@ -642,15 +709,11 @@ public class Candidate {
 	private static Map<String, String> parameterUnits(){
 		Map<String, String> unitsMap = new LinkedHashMap<String, String>();
 		
+		// if unit is not here, then it is assumed to be unitless. 
 		unitsMap.put("DM", "pc/cc");
 		unitsMap.put("F0", "Hz");
 		unitsMap.put("F1", "Hz/Hz");
 		unitsMap.put("ACC", "m/s^2");
-		unitsMap.put("FOLD_SNR", null);
-		unitsMap.put("FFT_SNR", null);
-		unitsMap.put("PICS_TRAPUM", null);
-		unitsMap.put("PICS_PALFA", null);
-		unitsMap.put("BEAM_NUM", null);
 		unitsMap.put("RA", "hours");
 		unitsMap.put("DEC", "degrees");
 		unitsMap.put("BORESIGHT_ANG_DIST", "degrees");
@@ -660,7 +723,8 @@ public class Candidate {
 		return unitsMap;
 		
 	}
-	
+
+
 
 	public static final Map<String, String> PARAMETER_UNITS_MAP = parameterUnits();
 	public static final Map<String, Function<Candidate, Double>>  SORTABLE_PARAMETERS_MAP = sortableParameters();
