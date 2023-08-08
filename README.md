@@ -1,4 +1,4 @@
-# CandyJar V2.4
+# CandyJar V2.5
 Candidate Viewer for TRAPUM and MPIFR pulsar surveys with the MeerKAT telescope
 
 For now, releases will not be given as `jar` files. Please build from source using `gradle`. The application needs `Java 14` or above to run. Please start with installing JAVA and then you can build and run the application. 
