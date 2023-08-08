@@ -47,7 +47,8 @@ public class CandidateFileReader implements CandidateFileConstants {
 			List<String> headerChunks = Arrays.asList(headers.toArray()[0].toString().split(","));
 			Map<String, Integer> headerPositions = new HashMap<String, Integer>();
 			for(String x : csvParams) {
-				headerPositions.put(x, headerChunks.indexOf(x));
+
+				if(headerChunks.contains(x)) headerPositions.put(x, headerChunks.indexOf(x));
 			}
 			
 		    AtomicInteger counter = new AtomicInteger(0);
@@ -57,45 +58,48 @@ public class CandidateFileReader implements CandidateFileConstants {
 				String[] chunks = f.split(",");
   				Candidate c = new Candidate();
 				c.setLineNum(counter.toString());
-				if(headerPositions.getOrDefault(pointing_id, -1) != -1) c.setPointingID(Integer.parseInt(chunks[headerPositions.get(pointing_id)]));
-				if(headerPositions.getOrDefault(beam_id, -1) != -1) c.setBeamID(Integer.parseInt(chunks[headerPositions.get(beam_id)]));
-				if(headerPositions.getOrDefault(beam_name, -1) != -1) c.setBeamName(chunks[headerPositions.get(beam_name)]);
-				if(headerPositions.getOrDefault(source_name, -1) != -1) c.setSourceName(chunks[headerPositions.get(source_name)]);
-				if(headerPositions.getOrDefault(ra, -1) != -1) c.setRa(new Angle(chunks[headerPositions.get(ra)], Angle.HHMMSS));
-				if(headerPositions.getOrDefault(dec, -1) != -1) c.setDec(new Angle(chunks[headerPositions.get(dec)], Angle.DDMMSS));
-				if(headerPositions.getOrDefault(gl, -1) != -1) c.setGl(new Angle(chunks[headerPositions.get(gl)], Angle.DEG));
-				if(headerPositions.getOrDefault(gb, -1) != -1) c.setGb(new Angle(chunks[headerPositions.get(gb)], Angle.DEG));
-				if(headerPositions.getOrDefault(mjd_start, -1) != -1) c.setStartMJD(Double.parseDouble(chunks[headerPositions.get(mjd_start)]));
+				if(headerPositions.containsKey(pointing_id)) c.setPointingID(Integer.parseInt(chunks[headerPositions.get(pointing_id)]));
+				if(headerPositions.containsKey(beam_id)) c.setBeamID(Integer.parseInt(chunks[headerPositions.get(beam_id)]));
+				if(headerPositions.containsKey(beam_name)) c.setBeamName(chunks[headerPositions.get(beam_name)]);
+				if(headerPositions.containsKey(source_name)) c.setSourceName(chunks[headerPositions.get(source_name)]);
+				if(headerPositions.containsKey(ra)) c.setRa(new Angle(chunks[headerPositions.get(ra)], Angle.HHMMSS));
+				if(headerPositions.containsKey(dec)) c.setDec(new Angle(chunks[headerPositions.get(dec)], Angle.DDMMSS));
+				if(headerPositions.containsKey(gl)) c.setGl(new Angle(chunks[headerPositions.get(gl)], Angle.DEG));
+				if(headerPositions.containsKey(gb)) c.setGb(new Angle(chunks[headerPositions.get(gb)], Angle.DEG));
+				if(headerPositions.containsKey(mjd_start)) c.setStartMJD(Double.parseDouble(chunks[headerPositions.get(mjd_start)]));
 				
-				if(headerPositions.getOrDefault(utc_start, -1) != -1) {
+				if(headerPositions.containsKey(utc_start)) {
 					c.setStartUTC(Utilities.getUTCLocalDateTime(chunks[headerPositions.get(utc_start)], DateTimeFormatter.ISO_DATE_TIME));
 					c.setUtcString(Utilities.getUTCString(c.getStartUTC(), DateTimeFormatter.ISO_DATE_TIME));
 				}
 				
-				if(headerPositions.getOrDefault(f0_user, -1) != -1) c.setUserF0(Double.parseDouble(chunks[headerPositions.get(f0_user)]));
-				if(headerPositions.getOrDefault(f0_opt, -1) != -1) c.setOptF0(Double.parseDouble(chunks[headerPositions.get(f0_opt)]));
-				if(headerPositions.getOrDefault(f0_opt_err, -1) != -1) c.setOptF0Err(Double.parseDouble(chunks[headerPositions.get(f0_opt_err)]));
-				if(headerPositions.getOrDefault(f1_user, -1) != -1) c.setUserF1(Double.parseDouble(chunks[headerPositions.get(f1_user)]));
-				if(headerPositions.getOrDefault(f1_opt, -1) != -1) c.setOptF1(Double.parseDouble(chunks[headerPositions.get(f1_opt)]));
-				if(headerPositions.getOrDefault(f1_opt_err, -1) != -1) c.setOptF1Err(Double.parseDouble(chunks[headerPositions.get(f1_opt_err)]));
-				if(headerPositions.getOrDefault(acc_user, -1) != -1) c.setUserAcc(Double.parseDouble(chunks[headerPositions.get(acc_user)]));
-				if(headerPositions.getOrDefault(acc_opt, -1) != -1) c.setOptAcc(Double.parseDouble(chunks[headerPositions.get(acc_opt)]));
-				if(headerPositions.getOrDefault(acc_opt_err, -1) != -1) c.setOptAccErr(Double.parseDouble(chunks[headerPositions.get(acc_opt_err)]));
-				if(headerPositions.getOrDefault(dm_user, -1) != -1) c.setUserDM(Double.parseDouble(chunks[headerPositions.get(dm_user)]));
-				if(headerPositions.getOrDefault(dm_opt, -1) != -1) c.setOptDM(Double.parseDouble(chunks[headerPositions.get(dm_opt)]));
-				if(headerPositions.getOrDefault(dm_opt_err, -1) != -1) c.setOptDMErr(Double.parseDouble(chunks[headerPositions.get(dm_opt_err)]));
-				if(headerPositions.getOrDefault(sn_fft, -1) != -1) c.setFftSNR(Double.parseDouble(chunks[headerPositions.get(sn_fft)]));
-				if(headerPositions.getOrDefault(sn_fold, -1) != -1) c.setFoldSNR(Double.parseDouble(chunks[headerPositions.get(sn_fold)]));
-				if(headerPositions.getOrDefault(pepoch, -1) != -1) c.setPeopoch(Double.parseDouble(chunks[headerPositions.get(pepoch)]));
-				if(headerPositions.getOrDefault(maxdm_ymw16, -1) != -1) c.setMaxDMYMW16(Double.parseDouble(chunks[headerPositions.get(maxdm_ymw16)]));
-				if(headerPositions.getOrDefault(dist_ymw16, -1) != -1) c.setDistYMW16(Double.parseDouble(chunks[headerPositions.get(dist_ymw16)]));
-				if(headerPositions.getOrDefault(pics_trapum_ter5, -1) != -1) c.setPicsScoreTrapum(Double.parseDouble(chunks[headerPositions.get(pics_trapum_ter5)]));
-				if(headerPositions.getOrDefault(pics_palfa, -1) != -1) c.setPicsScorePALFA(Double.parseDouble(chunks[headerPositions.get(pics_palfa)]));
-				if(headerPositions.getOrDefault(png_path, -1) != -1) c.setPngFilePath(chunks[headerPositions.get(png_path)]);
-				if(headerPositions.getOrDefault(metafile_path, -1) != -1) c.setMetaFilePath(chunks[headerPositions.get(metafile_path)]);
-				if(headerPositions.getOrDefault(filterbank_path, -1) != -1) c.setFilterbankPath(chunks[headerPositions.get(filterbank_path)]);
-				if(headerPositions.getOrDefault(candidate_tarball_path, -1) != -1) c.setTarballPath(chunks[headerPositions.get(candidate_tarball_path)]);
-				if(headerPositions.getOrDefault(tobs, -1) != -1) c.setTobs(Double.parseDouble(chunks[headerPositions.get(tobs)]));
+				if(headerPositions.containsKey(f0_user)) c.setUserF0(Double.parseDouble(chunks[headerPositions.get(f0_user)]));
+				if(headerPositions.containsKey(f0_opt)) c.setOptF0(Double.parseDouble(chunks[headerPositions.get(f0_opt)]));
+				if(headerPositions.containsKey(f0_opt_err)) c.setOptF0Err(Double.parseDouble(chunks[headerPositions.get(f0_opt_err)]));
+				if(headerPositions.containsKey(f1_user)) c.setUserF1(Double.parseDouble(chunks[headerPositions.get(f1_user)]));
+				if(headerPositions.containsKey(f1_opt)) c.setOptF1(Double.parseDouble(chunks[headerPositions.get(f1_opt)]));
+				if(headerPositions.containsKey(f1_opt_err)) c.setOptF1Err(Double.parseDouble(chunks[headerPositions.get(f1_opt_err)]));
+				if(headerPositions.containsKey(acc_user)) c.setUserAcc(Double.parseDouble(chunks[headerPositions.get(acc_user)]));
+				if(headerPositions.containsKey(acc_opt)) c.setOptAcc(Double.parseDouble(chunks[headerPositions.get(acc_opt)]));
+				if(headerPositions.containsKey(acc_opt_err)) c.setOptAccErr(Double.parseDouble(chunks[headerPositions.get(acc_opt_err)]));
+				if(headerPositions.containsKey(dm_user)) c.setUserDM(Double.parseDouble(chunks[headerPositions.get(dm_user)]));
+				if(headerPositions.containsKey(dm_opt)) c.setOptDM(Double.parseDouble(chunks[headerPositions.get(dm_opt)]));
+				if(headerPositions.containsKey(dm_opt_err)) c.setOptDMErr(Double.parseDouble(chunks[headerPositions.get(dm_opt_err)]));
+				if(headerPositions.containsKey(sn_fft)) c.setFftSNR(Double.parseDouble(chunks[headerPositions.get(sn_fft)]));
+				if(headerPositions.containsKey(sn_fold)) c.setFoldSNR(Double.parseDouble(chunks[headerPositions.get(sn_fold)]));
+				if(headerPositions.containsKey(pepoch)) c.setPeopoch(Double.parseDouble(chunks[headerPositions.get(pepoch)]));
+				if(headerPositions.containsKey(maxdm_ymw16)) c.setMaxDMYMW16(Double.parseDouble(chunks[headerPositions.get(maxdm_ymw16)]));
+				if(headerPositions.containsKey(dist_ymw16)) c.setDistYMW16(Double.parseDouble(chunks[headerPositions.get(dist_ymw16)]));
+				if(headerPositions.containsKey(png_path)) c.setPngFilePath(chunks[headerPositions.get(png_path)]);
+				if(headerPositions.containsKey(metafile_path)) c.setMetaFilePath(chunks[headerPositions.get(metafile_path)]);
+				if(headerPositions.containsKey(filterbank_path)) c.setFilterbankPath(chunks[headerPositions.get(filterbank_path)]);
+				if(headerPositions.containsKey(candidate_tarball_path)) c.setTarballPath(chunks[headerPositions.get(candidate_tarball_path)]);
+				if(headerPositions.containsKey(tobs)) c.setTobs(Double.parseDouble(chunks[headerPositions.get(tobs)]));
+				for (String classifier : classifierNames) {
+					if(headerPositions.containsKey(classifier)) {
+						c.addClassifierScore(classifier, Double.parseDouble(chunks[headerPositions.get(classifier)]));
+					}
+				}
 				
 				c.setCandidateType(CANDIDATE_TYPE.UNCAT);
 
@@ -114,7 +118,14 @@ public class CandidateFileReader implements CandidateFileConstants {
 				
 			});
 			
+			// get all keys from headerPositions that contain PICS in their name
+			List<String> picsClassifiers = headerChunks.stream().filter(f -> f.contains("pics")).collect(Collectors.toList());
+			System.err.println("Found " + picsClassifiers.size() + " PICS classifiers:" + picsClassifiers);
+			Candidate.initParamMapsWithClassifiers(picsClassifiers);
+
 			System.err.println("Read all candidates...");
+
+
 			
 			return candidates;
 			
