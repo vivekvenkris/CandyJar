@@ -164,7 +164,7 @@ public class CandyJar extends Application implements Constants {
 
 	/* Top left: Filter and sort candidates */
 	final ComboBox<String> utcBox = new ComboBox<String>();
-	final ComboBox<String> sortBox = new ComboBox<String>(FXCollections.observableArrayList(Candidate.SORTABLE_PARAMETERS_MAP.keySet()));
+	final ComboBox<String> sortBox = new ComboBox<String>();
 	
 	 
      // Creating new Toggle buttons.
@@ -325,9 +325,7 @@ public class CandyJar extends Application implements Constants {
 
 		message.setTextFill(Paint.valueOf("darkred"));
 		
-		if(chartViewer != null && chartViewer.isShowing()) chartViewer.close();
 
-		chartViewer = secondaryScreenBounds!=null? new ChartViewer(secondaryScreenBounds, numCharts, this): null;
 	}
 
 	public Stage getStage() {
@@ -394,6 +392,10 @@ public class CandyJar extends Application implements Constants {
 
 				imageCounter = 0;
 				utcBox.setVisible(true);
+				prevUTC.setVisible(true);
+				nextUTC.setVisible(true);
+				prevUTC.setDisable(true);
+				nextUTC.setDisable(true);
 				loadClassification.setVisible(true);
 
 				try {
@@ -412,8 +414,13 @@ public class CandyJar extends Application implements Constants {
 						Helpers.findCandidateSimilarities(candidatesPerUtc);
 
 					}
-
+					sortBox.getItems().clear();
+					System.err.println("Sortable parameters: " + Candidate.SORTABLE_PARAMETERS_MAP.keySet());
+					sortBox.getItems().addAll(FXCollections.observableArrayList(Candidate.SORTABLE_PARAMETERS_MAP.keySet()));
 					message.setText(utcs.size() + " utcs found");
+					if(chartViewer != null && chartViewer.isShowing()) chartViewer.close();
+
+					chartViewer = secondaryScreenBounds!=null? new ChartViewer(secondaryScreenBounds, numCharts, candyJar): null;				
 
 				} catch (NoSuchFileException e) {
 					message.setText(e.getMessage());
@@ -464,8 +471,8 @@ public class CandyJar extends Application implements Constants {
 				sortOrder.setVisible(true);
 				candidatesVisible = false;
 
-				prevUTC.setVisible(true);
-				nextUTC.setVisible(true);
+				prevUTC.setDisable(false);
+				nextUTC.setDisable(false);
 				prevUTC.setTooltip(new Tooltip("Go to previous UTC"));
 				nextUTC.setTooltip(new Tooltip("Go to next UTC"));
 
@@ -910,10 +917,10 @@ public class CandyJar extends Application implements Constants {
 			table.getItems().add(new Pair<String, Object>("Beam ID:", new CopyableLabel(candidate.getBeamID())));
 			table.getItems().add(new Pair<String, Object>("Beam Name:", new CopyableLabel(candidate.getBeamName())));
 			table.getItems().add(new Pair<String, Object>("Neighbour beams:", neighbours.toString()));
-			table.getItems()
-			.add(new Pair<String, Object>("PICS score (TRAPUM):", new CopyableLabel(candidate.getPicsScoreTrapum())));
-			table.getItems()
-			.add(new Pair<String, Object>("PICS score (PALFA):", new CopyableLabel(candidate.getPicsScorePALFA())));
+			// iterate over all classifier scores
+			for (Entry<String, Double> classifier : candidate.getClassifierScoresMap().entrySet()) {
+				table.getItems().add(new Pair<String, Object>(classifier.getKey() + " score:", new CopyableLabel(classifier.getValue() + "")));
+			}
 			table.getItems().add(new Pair<String, Object>("FFT SNR:", new CopyableLabel(candidate.getFftSNR())));
 			table.getItems().add(new Pair<String, Object>("Fold SNR: ", new CopyableLabel(candidate.getFoldSNR())));
 
