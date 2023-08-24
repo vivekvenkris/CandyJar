@@ -568,6 +568,8 @@ public class Candidate {
 	}
 
 	public String getFilterbankPathGlobbed() {
+		if (this.filterbankPath == null) return "";
+		if (this.filterbankPath.lastIndexOf("/") == -1) return "*.fil";
 		return this.filterbankPath.substring(0, filterbankPath.lastIndexOf("/")) + "/*.fil";
 	}
 	
