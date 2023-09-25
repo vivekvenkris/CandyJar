@@ -77,6 +77,14 @@ version = '2.5'
 dependencies {
 	
 	implementation('org.opencadc:jsky:1.0.0')
+    implementation ('org.openjdk.jol:jol-core:0.16') {
+        exclude module: 'sun'
+        exclude module: 'sun.misc'
+    }
+    // implementation ('org.openjdk.jol:jol-samples:0.16') {
+    //     exclude module: 'sun'
+    //     exclude module: 'sun.misc'
+    // }
 
 	implementation(group: 'javax.json', name: 'javax.json-api', version: '1.1')
 	implementation(group: 'org.glassfish', name: 'javax.json', version: '1.1')
@@ -119,7 +127,7 @@ application {
             "--add-opens=javafx.controls/javafx.scene.control.skin=org.controlsfx.controls",
             "--add-opens=javafx.controls/com.sun.javafx.scene.control.inputmap=org.controlsfx.controls",
             "--add-opens=javafx.graphics/com.sun.javafx.css=org.controlsfx.controls",
-	    '-Xms2048m', '-Xmx4096m'
+	    '-Xmx8192m', '-Xmx8192m'
             
     ]
     //mainClassName = project.findProperty("chooseMain").toString()
