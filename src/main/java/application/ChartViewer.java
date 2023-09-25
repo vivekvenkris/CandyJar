@@ -357,10 +357,10 @@ public class ChartViewer {
 		private Integer chartID;
 
 		private final ComboBox<String> xAxisBox = 
-				new ComboBox<String>(FXCollections.observableArrayList(Candidate.PLOTTABLE_PARAMETERS_MAP.keySet()));
+				new ComboBox<String>();
 
 		private final  ComboBox<String> yAxisBox = 
-				new ComboBox<String>(FXCollections.observableArrayList(Candidate.PLOTTABLE_PARAMETERS_MAP.keySet()));
+				new ComboBox<String>();
 
 		private final  CheckBox logX = new CheckBox();
 		private final  CheckBox logY = new CheckBox();
@@ -384,6 +384,9 @@ public class ChartViewer {
 			this.chartID = chartID;
 			
 			chart = new XYChart();
+
+			xAxisBox.getItems().addAll(FXCollections.observableArrayList(Candidate.PLOTTABLE_PARAMETERS_MAP.keySet()));
+			yAxisBox.getItems().addAll(FXCollections.observableArrayList(Candidate.PLOTTABLE_PARAMETERS_MAP.keySet()));
 			
 			PointsMarker pointsMarker = new PointsMarker();
 			
@@ -422,8 +425,8 @@ public class ChartViewer {
 
 					Function<Candidate, Tuple<Double, Double>> yFunction = Candidate.PLOTTABLE_PARAMETERS_MAP.get(yParam);
 
-					AxisAttributes xAxisAttributes = new AxisAttributes(xParam, Candidate.PARAMETER_UNITS_MAP.get(xParam), isXLog, true, xFunction);
-					AxisAttributes yAxisAttributes = new AxisAttributes(yParam, Candidate.PARAMETER_UNITS_MAP.get(yParam), isYLog, true, yFunction);
+					AxisAttributes xAxisAttributes = new AxisAttributes(xParam, Candidate.PARAMETER_UNITS_MAP.getOrDefault(xParam, ""), isXLog, true, xFunction);
+					AxisAttributes yAxisAttributes = new AxisAttributes(yParam, Candidate.PARAMETER_UNITS_MAP.getOrDefault(yParam,""), isYLog, true, yFunction);
 					initialiseChart(xAxisAttributes, yAxisAttributes);
 					
 					plotAllCandidates();
