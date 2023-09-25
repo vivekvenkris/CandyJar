@@ -81,6 +81,15 @@ public class Candidate {
 	private String csvLine;
 	
 	private boolean visible;
+
+	@Override
+	public boolean equals(Object obj) {
+		if(obj instanceof Candidate) {
+			Candidate c = (Candidate)obj;
+			return this.pngFilePath.equals(c.pngFilePath);
+		}
+		return false;
+	}
 	
 	public Double getOptP0() {
 		return 1/optF0;
@@ -177,7 +186,7 @@ public class Candidate {
 	}
 	
 	public String getBeamP0DMString() {
-		return String.format("%s %8.4f %4.2f", this.beamName.replace("cfbf00", ""), this.getOptP0()* 1000.0, this.optDM);
+		return String.format("%s %s %8.4f %4.2f",this.lineNum, this.beamName.replace("cfbf00", ""), this.getOptP0()* 1000.0, this.optDM);
 	}
 	@Override
 	public String toString() {
