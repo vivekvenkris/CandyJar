@@ -1,5 +1,4 @@
 package application;
-
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -401,6 +400,11 @@ public class CandyJar extends Application implements Constants {
 				try {
 					fullCandiatesList.addAll(CandidateFileReader.readCandidateFile(csv, baseDir));
 
+
+					System.err.println("Read " + fullCandiatesList.size() + " candidates from " + csv);
+
+
+
 					utcs.addAll(fullCandiatesList.stream().map(f -> f.getStartUTC()).collect(Collectors.toSet()));
 
 					utcBox.setItems(FXCollections.observableArrayList(utcs.stream()
@@ -420,7 +424,9 @@ public class CandyJar extends Application implements Constants {
 					message.setText(utcs.size() + " utcs found");
 					if(chartViewer != null && chartViewer.isShowing()) chartViewer.close();
 
-					chartViewer = secondaryScreenBounds!=null? new ChartViewer(secondaryScreenBounds, numCharts, candyJar): null;				
+					chartViewer = secondaryScreenBounds!=null? new ChartViewer(secondaryScreenBounds, numCharts, candyJar): null;
+					
+
 
 				} catch (NoSuchFileException e) {
 					message.setText(e.getMessage());
@@ -574,7 +580,6 @@ public class CandyJar extends Application implements Constants {
 
 				addAllCandidates(utc, filteredTypes);
 
-				System.err.println("after filtering: " + candidates.size());
 
 				imageCounter = 0;
 
@@ -916,7 +921,7 @@ public class CandyJar extends Application implements Constants {
 			table.getItems().add(new Pair<String, Object>("Pointing ID:", new CopyableLabel(candidate.getPointingID()))); 
 			table.getItems().add(new Pair<String, Object>("Beam ID:", new CopyableLabel(candidate.getBeamID())));
 			table.getItems().add(new Pair<String, Object>("Beam Name:", new CopyableLabel(candidate.getBeamName())));
-			table.getItems().add(new Pair<String, Object>("Neighbour beams:", neighbours.toString()));
+			table.getItems().add(new Pair<String, Object>("Neighbour beams:", new CopyableLabel(neighbours.toString())));
 			// iterate over all classifier scores
 			for (Entry<String, Double> classifier : candidate.getClassifierScoresMap().entrySet()) {
 				table.getItems().add(new Pair<String, Object>(classifier.getKey() + " score:", new CopyableLabel(classifier.getValue() + "")));
@@ -1290,6 +1295,7 @@ public class CandyJar extends Application implements Constants {
 
 		AtomicInteger runCount = new AtomicInteger(0);
 
+		
 		candidates.stream().forEach(f -> {
 			int index = runCount.getAndIncrement();
 			if( Math.abs(count - index) <= numImageGulp) {
@@ -1325,7 +1331,6 @@ public class CandyJar extends Application implements Constants {
 			}
 
 		});
-
 
 	}
 
