@@ -1,8 +1,15 @@
 package application;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.Map.Entry;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -32,30 +39,170 @@ import net.kurobako.gesturefx.GesturePane;
 
 public class Helpers {
 
-	private static List<Double> harmonics = new ArrayList<Double>();
-	static {
-		for(int i=1; i<=16; i++) {
-			for(int j=1;j<=16;j++) {
-				harmonics.add(((double)i)/j);
-			}
-		}
-	}
-	public static void findCandidateSimilarities(List<Candidate> candidates) {
-		
-		candidates.parallelStream().forEach(c1 -> {
-			List<Candidate> simiarCands = candidates.parallelStream().map(c2 -> {
-				if(c2.equals(c1)) return null;
-				double minF0 = c1.getOptF0() - 1e-4;
-				double maxF0 = c1.getOptF0() + 1e-4;
-				for(Double harmonic: harmonics) {
+	public static <T> Collector<T, ?, T> toSingleton() {
+    return Collectors.collectingAndThen(
+            Collectors.toList(),
+            list -> {
+                if (list.size() != 1) {
+                    throw new IllegalStateException();
+                }
+                return list.get(0);
+            }
+    );
+}
+	// Unique harmonic ratios for i-> 0 to 16; j-> 0 to 16; and harmonic = i/j
+	private static double[] harmonicRatios = new double[] {0.0625,  0.0667,  0.0714,  0.0769,  0.0833,  0.0909,  0.1 ,
+        0.1111,  0.125 ,  0.1333,  0.1429,  0.1538,  0.1667,  0.1818,
+        0.1875,  0.2   ,  0.2143,  0.2222,  0.2308,  0.25  ,  0.2667,
+        0.2727,  0.2857,  0.3   ,  0.3077,  0.3125,  0.3333,  0.3571,
+        0.3636,  0.375 ,  0.3846,  0.4   ,  0.4167,  0.4286,  0.4375,
+        0.4444,  0.4545,  0.4615,  0.4667,  0.5   ,  0.5333,  0.5385,
+        0.5455,  0.5556,  0.5625,  0.5714,  0.5833,  0.6   ,  0.6154,
+        0.625 ,  0.6364,  0.6429,  0.6667,  0.6875,  0.6923,  0.7   ,
+        0.7143,  0.7273,  0.7333,  0.75  ,  0.7692,  0.7778,  0.7857,
+        0.8   ,  0.8125,  0.8182,  0.8333,  0.8462,  0.8571,  0.8667,
+        0.875 ,  0.8889,  0.9   ,  0.9091,  0.9167,  0.9231,  0.9286,
+        0.9333,  0.9375,  1.    ,  1.0667,  1.0714,  1.0769,  1.0833,
+        1.0909,  1.1   ,  1.1111,  1.125 ,  1.1429,  1.1538,  1.1667,
+        1.1818,  1.2   ,  1.2222,  1.2308,  1.25  ,  1.2727,  1.2857,
+        1.3   ,  1.3333,  1.3636,  1.375 ,  1.4   ,  1.4286,  1.4444,
+        1.4545,  1.5   ,  1.5556,  1.5714,  1.6   ,  1.625 ,  1.6667,
+        1.7143,  1.75  ,  1.7778,  1.8   ,  1.8333,  1.8571,  1.875 ,
+        2.    ,  2.1429,  2.1667,  2.2   ,  2.25  ,  2.2857,  2.3333,
+        2.4   ,  2.5   ,  2.6   ,  2.6667,  2.75  ,  2.8   ,  3.    ,
+        3.2   ,  3.25  ,  3.3333,  3.5   ,  3.6667,  3.75  ,  4.    ,
+        4.3333,  4.5   ,  4.6667,  5.    ,  5.3333,  5.5   ,  6.    ,
+        6.5   ,  7.    ,  7.5   ,  8.    ,  9.    , 10.    , 11.    ,
+       12.    , 13.    , 14.    , 15.    , 16. };
+
+
+
+	
+
+	public static void getRelatedCandidates(List<Candidate> candidates){
+
+		candidates.stream().forEach(c1 -> {
+
+			if(candidates.indexOf(c1) == candidates.size()-1) return;
+
+			List<Candidate> simiarCands = candidates.stream().skip(candidates.indexOf(c1)+1).limit(candidates.size()-candidates.indexOf(c1)-1).map(c2 -> {
+				double f0 = c1.getOptF0();
+				double minF0 = f0 - 1e-4;
+				double maxF0 = f0 + 1e-4;
+				for(double harmonic: harmonicRatios) {
 					if(c2.getOptF0() >= harmonic * minF0 && c2.getOptF0() <= harmonic * maxF0 ) {
 						return c2;
 					}
 				}
 				return null;
 			}).filter(Objects::nonNull).collect(Collectors.toList());
+
+		simiarCands.stream().forEach(f-> f.getSimilarCandidatesInFreq().add(c1));	
+		c1.getSimilarCandidatesInFreq().addAll(simiarCands);
 			
-			c1.getSimilarCandidatesInFreq().addAll(simiarCands);
+		});
+		
+		System.err.println("Found and grouped related harmonics...");
+
+	}
+
+	public static boolean areTheyRelated(Candidate c1, Candidate c2){
+			double f0 = c1.getOptF0();
+			double tolerance= f0 > 10 ? 1e-4 : 1e-3;
+			double minF0 = f0 - tolerance;
+			double maxF0 = f0 + tolerance;					
+			for(double harmonic: harmonicRatios) {
+				if(c2.getOptF0() >= harmonic * minF0 && c2.getOptF0() <= harmonic * maxF0 ) {
+					return true;
+				}
+			}
+			return false;
+	}
+
+	
+
+	public static void findCandidateSimilarities(List<Candidate> candidates){
+		 Map<Candidate, List<Candidate>> candidateRelationMap = new HashMap<Candidate, List<Candidate>>();
+
+		 for(Candidate current: candidates){
+		
+			List<Candidate> relatedToCurrent = candidateRelationMap.keySet().stream().filter(c -> areTheyRelated(c, current)).collect(Collectors.toList());
+
+			if(relatedToCurrent.isEmpty()) {
+				candidateRelationMap.put(current, new ArrayList<Candidate>());
+			}
+
+			else{
+				Candidate primaryRelated = relatedToCurrent.get(0);
+				List<Candidate> remainingRelated = relatedToCurrent.subList(1, relatedToCurrent.size());
+				candidateRelationMap.get(primaryRelated).add(current);
+				if (relatedToCurrent.size() > 1) {
+					//System.err.println("Merging " + firstRelated.getOptF0() + " with " + remainingRelated.stream().map(c -> c.getOptF0()).collect(Collectors.toList()));
+					remainingRelated.stream().forEach(related -> {
+						candidateRelationMap.get(primaryRelated).add(related); // add related to firstRelated
+						candidateRelationMap.get(primaryRelated).addAll(candidateRelationMap.get(related)); // add related of related to firstRelated
+						candidateRelationMap.remove(related);
+					});
+				}
+				
+			}
+
+		 }
+		System.err.println("Total memory after mapping similarities: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/1024/1024 + " MB");
+
+		System.err.println("Clusters: " + candidateRelationMap.size());
+		//sort candidateRelatoon Map by size and print
+		// candidateRelationMap.entrySet().stream().sorted((e1, e2) -> e2.getValue().size() - e1.getValue().size())
+		// 			.forEach(e -> {
+		// 				System.err.println(e.getKey().getOptF0() + " " + e.getValue().size());
+		// 				e.getValue().stream().forEach(c -> System.err.println("\t" + c.getOptF0() + " " + c.getLineNum()));
+		// 			});
+		
+
+
+		
+		
+		System.err.println("---------------------------------------------------");
+
+		 // now we have a map of candidates and their related candidates
+		 candidateRelationMap.entrySet().stream().forEach(e -> { // for each candidate in map
+			Candidate key = e.getKey();
+			List<Candidate> value = e.getValue(); 
+			key.getSimilarCandidatesInFreq().addAll(value);  // add related candidate to current candidate as similar
+
+			value.stream().forEach( c -> {
+				c.getSimilarCandidatesInFreq().addAll(value); // add all related candidates of current candidate to related candidate
+				c.getSimilarCandidatesInFreq().remove(c); // remote itself
+				c.getSimilarCandidatesInFreq().add(key); // add current candidate to related candidate as similar
+			});
+
+
+		 });
+
+	}
+
+
+	public static void findCandidateSimilarities2(List<Candidate> candidates) {
+
+		
+		candidates.stream().forEach(c1 -> {
+
+			if(candidates.indexOf(c1) == candidates.size()-1) return;
+
+			List<Candidate> simiarCands = candidates.parallelStream().skip(candidates.indexOf(c1)+1).limit(candidates.size()-candidates.indexOf(c1)-1).map(c2 -> {
+				double f0 = c1.getOptF0();
+				double minF0 = f0 - 1e-4;
+				double maxF0 = f0 + 1e-4;
+				for(double harmonic: harmonicRatios) {
+					if(c2.getOptF0() >= harmonic * minF0 && c2.getOptF0() <= harmonic * maxF0 ) {
+						return c2;
+					}
+				}
+				return null;
+			}).filter(Objects::nonNull).collect(Collectors.toList());
+
+		simiarCands.stream().forEach(f-> f.getSimilarCandidatesInFreq().add(c1));	
+		c1.getSimilarCandidatesInFreq().addAll(simiarCands);
 			
 		});
 		
