@@ -1675,7 +1675,7 @@ public class CandyJar extends Application implements Constants {
 
 		LOGGER.atDebug().addArgument("test");
 
-		System.err.println("*************************Candy Jar V2.6*******************************");
+		System.err.println("*************************Candy Jar V3.0*******************************");
 
 		if(System.getenv("PSRCAT_DIR") != null) {
 			PsrcatConstants.psrcatDBs.add(System.getenv("PSRCAT_DIR") + File.separator + "psrcat.db");
