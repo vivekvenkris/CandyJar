@@ -106,27 +106,39 @@ public class Helpers {
 
 	}
 
-	public static boolean areTheyRelated(Candidate c1, Candidate c2){
+	public static boolean areTheyRelated(Candidate c1, Candidate c2, double fTol, boolean scaleTol, double dmTol){
 			double f0 = c1.getOptF0();
-			double tolerance= f0 > 10 ? 1e-4 : 1e-3;
-			double minF0 = f0 - tolerance;
-			double maxF0 = f0 + tolerance;					
+
+			boolean closeInPeriod = false;
+
+			double matchingHarmonic = 0;
+
 			for(double harmonic: harmonicRatios) {
-				if(c2.getOptF0() >= harmonic * minF0 && c2.getOptF0() <= harmonic * maxF0 ) {
-					return true;
+				double tol = scaleTol ? fTol * harmonic : fTol;
+				if(Math.abs(c2.getOptF0() / (harmonic * f0) - 1) < tol) {
+					closeInPeriod = true;
+					matchingHarmonic = harmonic;
+					break;
 				}
+
 			}
-			return false;
+			if(!closeInPeriod) return false;
+
+			// TODO: Identify how to compare DMs for candidates matching in harmonics. 
+
+			if(Math.abs(c1.getOptDM() - c2.getOptDM()) > dmTol) return false;
+
+			return true;
 	}
 
 	
 
-	public static void findCandidateSimilarities(List<Candidate> candidates){
+	public static void findCandidateSimilarities(List<Candidate> candidates, double fTol, boolean scaleTol, double dmTol){
 		 Map<Candidate, List<Candidate>> candidateRelationMap = new HashMap<Candidate, List<Candidate>>();
 
 		 for(Candidate current: candidates){
 		
-			List<Candidate> relatedToCurrent = candidateRelationMap.keySet().stream().filter(c -> areTheyRelated(c, current)).collect(Collectors.toList());
+			List<Candidate> relatedToCurrent = candidateRelationMap.keySet().stream().filter(c -> areTheyRelated(c, current, fTol, scaleTol, dmTol)).collect(Collectors.toList());
 
 			if(relatedToCurrent.isEmpty()) {
 				candidateRelationMap.put(current, new ArrayList<Candidate>());

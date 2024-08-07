@@ -62,6 +62,17 @@ public class Beam {
 		this.ellipseConfig = ellipseConfig;
 		
 	}
+
+	public Beam(String name, Angle ra, Angle dec, Angle radius) {
+		this();
+		this.name = name;
+		this.boresightName = name;
+		this.coordinates = ra.toHHMMSS() + " " + dec.toDDMMSS();
+		this.ra = ra;
+		this.dec = dec;
+		this.integerBeamName = Beam.getIntegerBeamName(this.name);
+		this.ellipseConfig = new EllipseConfig(radius, radius);
+	}
 	
 
 	

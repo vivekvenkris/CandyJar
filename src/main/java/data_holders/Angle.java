@@ -18,7 +18,7 @@ public class Angle implements Comparable<Angle>{
 	Integer sign = 0;
 	
 	public Angle clone() {
-		return new Angle(this.radValue,this.toStringUnits);
+		return new Angle(this.radValue,Angle.RAD, this.toStringUnits);
 	}
 	
 	public Angle(Double value, String format){
@@ -33,10 +33,14 @@ public class Angle implements Comparable<Angle>{
 		this.radValue = (this.getDecimalHourValue() + (seconds * SECONDS_IN_A_SOLAR_DAY / SECONDS_IN_A_SIDEREAL_DAY )*Constants.sec2Hrs) * Constants.hrs2Rad;
 		return this;
 	}
+
+	public Angle addDegrees(Double degrees){
+		this.radValue += degrees*Constants.deg2Rad;
+		return this;
+	}
 	
 	@Override
 	public boolean equals(Object obj) {
-		// TODO Auto-generated method stub
 		if(!(obj instanceof Angle)) return false;
 		Angle angle = (Angle)obj;
 		return this.radValue.equals(angle.getRadianValue());

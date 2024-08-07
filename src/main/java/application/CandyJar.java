@@ -1,4 +1,5 @@
 package application;
+import java.awt.TextField;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +49,7 @@ import constants.PsrcatConstants;
 import data_holders.Angle;
 import data_holders.Beam;
 import data_holders.Candidate;
+import data_holders.EllipseConfig;
 import data_holders.Candidate.CANDIDATE_PLOT_CATEGORY;
 import data_holders.Candidate.CANDIDATE_TYPE;
 import data_holders.MetaFile;
@@ -118,6 +121,7 @@ import javafx.util.Duration;
 import javafx.util.Pair;
 import net.kurobako.gesturefx.GesturePane;
 import readers.CandidateFileReader;
+import readers.ClassificationReader;
 import readers.Psrcat;
 import utilitites.AppUtils;
 import utilitites.GetCloseBeams;
@@ -143,6 +147,9 @@ public class CandyJar extends Application implements Constants {
 	public static Boolean extendPng = false;
 	public static final String FONT_AWESOME = "FontAwesome";
 	public static final int FONT_SIZE = 20;
+
+	public static String csvFile = Constants.CSV_FILE_NAME;
+	public static String rootDir = null;
 
 	Psrcat psrcat = new Psrcat();
 
@@ -186,7 +193,13 @@ public class CandyJar extends Application implements Constants {
 	final NumberAxis beamMapXAxis = new NumberAxis();
 	final NumberAxis beamMapYAxis = new NumberAxis();
 	final MyScatterChart beamMapChart = new MyScatterChart(beamMapXAxis, beamMapYAxis);
-	TabPane beamMapPane = new TabPane();
+	TabPane topTabPane = new TabPane();
+	public enum  TOP_PANE_TABS {BEAM_MAP, BEAM_MAP_PNG, BULK_CLASSIFICATION};
+	final List<String> topPaneTabs = new ArrayList<String>();
+
+
+
+
 	double initXLowerBound = 0, initXUpperBound = 0, initYLowerBound = 0, initYUpperBound = 0;
 
 
@@ -272,6 +285,11 @@ public class CandyJar extends Application implements Constants {
 	private static CandyJar candyJar;
 	private Stage myStage;
 
+	private static String boresightStr = null;
+	private static Double dmTolerance = 5.0;
+	private static Double freqTolerance = 1e-4;
+	private static boolean scaleTolerance = false;
+
 
 	public void initialise() {
 		
@@ -312,7 +330,7 @@ public class CandyJar extends Application implements Constants {
 		nextUTC.setVisible(false);
 		utcBox.setVisible(false);
 		beamMapChart.setVisible(false);
-		beamMapPane.setVisible(false);
+		topTabPane.setVisible(false);
 		candidateFilterHBox.setVisible(false);
 		sortBox.setVisible(false);
 		actionsBox.setVisible(false);
@@ -385,7 +403,7 @@ public class CandyJar extends Application implements Constants {
 				
 				psrcat.readPersonalPulsarList(baseDir+ File.separator + "pulsars.list");
 
-				String csv = baseDir.getAbsolutePath() + File.separator + Constants.CSV_FILE_NAME;
+				String csv = baseDir.getAbsolutePath() + File.separator + CandyJar.csvFile;
 
 
 
@@ -415,7 +433,7 @@ public class CandyJar extends Application implements Constants {
 						String utcString = Utilities.getUTCString(utc, DateTimeFormatter.ISO_DATE_TIME);
 						List<Candidate> candidatesPerUtc = fullCandiatesList.stream().filter(f -> f.getStartUTC().equals(utc)).collect(Collectors.toList());
 						candidateMap.put(utcString, candidatesPerUtc);
-						Helpers.findCandidateSimilarities(candidatesPerUtc);
+						Helpers.findCandidateSimilarities(candidatesPerUtc, freqTolerance, scaleTolerance, dmTolerance);
 
 					}
 					sortBox.getItems().clear();
@@ -470,7 +488,7 @@ public class CandyJar extends Application implements Constants {
 
 				candidateFilterHBox.setVisible(true);
 				beamMapChart.setVisible(true);
-				beamMapPane.setVisible(true);
+				topTabPane.setVisible(true);
 				imageView.setVisible(false);
 				actionsBox.setVisible(false);
 				sortBox.setVisible(true);
@@ -496,7 +514,10 @@ public class CandyJar extends Application implements Constants {
 				metaFile.findNeighbours();
 				
 				if(metaFile.getPng() != null) {
-					if(beamMapPane.getTabs().size() > 1) beamMapPane.getTabs().remove(beamMapPane.getTabs().size()-1);
+					if(topPaneTabs.contains(TOP_PANE_TABS.BEAM_MAP_PNG)) {
+						topTabPane.getTabs().remove(topPaneTabs.indexOf(TOP_PANE_TABS.BEAM_MAP_PNG.name()));
+						topPaneTabs.remove(TOP_PANE_TABS.BEAM_MAP_PNG.name());
+					}
 					BufferedImage beamImage;
 					try {
 						beamImage = ImageIO.read(metaFile.getPng());
@@ -509,13 +530,44 @@ public class CandyJar extends Application implements Constants {
 				    GesturePane gesturePane = Helpers.addGesture(new ImageView(SwingFXUtils.toFXImage(beamImage, null)));
 				    gesturePane.setMaxWidth(beamMapChart.getWidth());
 				    gesturePane.setMaxHeight(beamMapChart.getHeight());				    
-					beamMapPane.getTabs().add(new Tab("Beam map", gesturePane));
+					topTabPane.getTabs().add(new Tab("Beam map", gesturePane));
+					topPaneTabs.add(TOP_PANE_TABS.BEAM_MAP_PNG.name());
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
 				}
 				
 				pulsarsInBeam.clear();
+
+				if(metaFile.isStale()) {
+					if (boresightStr == null) {
+						message.setText("Meta file is stale. Please provide boresight coordinates.");
+						System.err.println("Meta file is stale. Please provide boresight coordinates.");
+						throw new RuntimeException("Meta file is stale. Please provide boresight coordinates.");
+					}
+					String[] boresight = boresightStr.split(",");
+
+					String beamName = boresight[0];
+					Angle boresightRa = new Angle(boresight[1], Angle.HHMMSS, Angle.HHMMSS);
+					Angle boresightDec = new Angle(boresight[2], Angle.DDMMSS, Angle.DDMMSS);
+					metaFile.setMinRa(boresightRa.clone().addDegrees(-0.25));
+					metaFile.setMaxRa(boresightRa.clone().addDegrees(0.25));
+
+					int sign = 1; 
+					if(boresightDec.getDegreeValue() < 1) sign = -1;
+
+					metaFile.setMinDec(boresightDec.clone().addDegrees(sign * -0.25));
+					metaFile.setMaxDec(boresightDec.clone().addDegrees(sign * 0.25));
+					Beam beam = new Beam(beamName, boresightRa, boresightDec, new Angle(Double.parseDouble(boresight[3]), Angle.DEG, Angle.DDMMSS));
+					metaFile.setBoresight(beam);
+					metaFile.getBeams().put(beamName, beam);
+
+
+
+				}
+
+				
+					
 				pulsarsInBeam.addAll(psrcat.getPulsarsInBeam(metaFile.getBoresight().getRa(),
 						metaFile.getBoresight().getDec(), new Angle(knownPulsarRadius, Angle.DEG, Angle.DEG)));
 				infoPane.getTabs().clear();
@@ -540,6 +592,7 @@ public class CandyJar extends Application implements Constants {
 
 				yLowerBound = yLowerBound - yDiff / 20;
 				yUpperBound = yUpperBound + yDiff / 20;
+
 
 				initXUpperBound = xUpperBound;
 				initXLowerBound = xLowerBound;
@@ -821,7 +874,21 @@ public class CandyJar extends Application implements Constants {
 					message.setText("File does not exist");
 				}
 				else {
-					loadFromFile(loadFile);
+					ClassificationReader classificationReader = new ClassificationReader(loadFile, fullCandiatesList);
+					//message.textProperty().bind(classificationReader.messageProperty());
+					classificationReader.setOnRunning(e -> {
+						message.setText("Loading classification...");
+					});
+					classificationReader.setOnSucceeded(e -> {
+						message.setText("Classification loaded successfully.");
+						consolidate(imageCounter);
+					});
+					classificationReader.setOnFailed(e -> {
+						message.setText("Failed to load classification.");
+					});
+					ExecutorService executor = Executors.newFixedThreadPool(1);
+					executor.execute(classificationReader);
+					executor.shutdown();
 				}
 
 
@@ -871,6 +938,10 @@ public class CandyJar extends Application implements Constants {
 		//stage.setResizable(false);
 		stage.show();
 
+		if(rootDir !=null){
+			rootDirTB.getTextField().setText(new File(rootDir).getAbsolutePath());
+			rootDirTB.getButton().fire();
+		}
 		//		stage.xProperty().addListener((obs, oldVal, newVal) -> {
 		//			System.out.println("X: " + newVal);
 		//
@@ -990,26 +1061,29 @@ public class CandyJar extends Application implements Constants {
 		next.fire();
 		
 	}
-	
 
-	public void updateDiagnosticTab(TabPane tabPane, Candidate candidate) {
+	public void addBulkClassification(Candidate candidate){
 
-		final TableView<Pair<String, Object>> table = new TableView<>();
-		// add diagnostics of known pulsars
-		if(pulsarsInBeam != null && !pulsarsInBeam.isEmpty()) {
-			
-			pulsarsInBeam.sort(Comparator.comparing(f -> Math.abs(((Pulsar)f).getDm() - candidate.getOptDM())));
-						
-			pulsarsInBeam.stream().forEach(pulsar -> {
-				table.getItems().add(new Pair<String, Object>(pulsar.getName() , KnownPulsarGuesser.guessPulsar(candidate, pulsar)));
-			});
+		Tab tab; 
+
+		if(!topPaneTabs.contains(TOP_PANE_TABS.BULK_CLASSIFICATION.name())){
+			tab = new Tab("Bulk Classification");
+			topTabPane.getTabs().add(tab);
+			topPaneTabs.add(TOP_PANE_TABS.BULK_CLASSIFICATION.name());
+			tab.setClosable(false);
+		}
+		else {
+			tab = topTabPane.getTabs().get(topPaneTabs.indexOf(TOP_PANE_TABS.BULK_CLASSIFICATION.name()));
 		}
 		
+
+		tab.setContent(null);
 		List<Candidate> uncatSimilarCandidates = candidate.getSimilarCandidatesInFreq().stream()
 				.filter(c-> c.getCandidateType().equals(CANDIDATE_TYPE.UNCAT)).collect(Collectors.toList());
 		
 		if(candidate.getSimilarCandidatesInFreq().isEmpty()) {
-			table.getItems().add(new Pair<String, Object>("Likely related uncategorized candidates:" , "None"));
+			HBox hBox = new HBox(new Label("No similar candidates found"));
+			tab.setContent(hBox);
 		}
 		else {
 			VBox similarCandidateVBox = new VBox();
@@ -1101,11 +1175,29 @@ public class CandyJar extends Application implements Constants {
 			
 			
 
-			table.getItems().add(new Pair<String, Object>("Likely related uncategorized candidates:" , similarCandidateVBox));
+
+			tab.setContent(similarCandidateVBox);
 
 			
 		}
+
+
+	}
+	
+
+	public void updateDiagnosticTab(TabPane tabPane, Candidate candidate) {
+
+		final TableView<Pair<String, Object>> table = new TableView<>();
 		
+		// add diagnostics of known pulsars
+		if(pulsarsInBeam != null && !pulsarsInBeam.isEmpty()) {
+			
+			pulsarsInBeam.sort(Comparator.comparing(f -> Math.abs(((Pulsar)f).getDm() - candidate.getOptDM())));
+						
+			pulsarsInBeam.stream().forEach(pulsar -> {
+				table.getItems().add(new Pair<String, Object>(pulsar.getName() , KnownPulsarGuesser.guessPulsar(candidate, pulsar)));
+			});
+		}
 
 		boolean addAcc = false;
 		if(Math.abs(candidate.getOptAcc() / candidate.getOptAccErr()) > 2 ) addAcc = true;
@@ -1356,6 +1448,7 @@ public class CandyJar extends Application implements Constants {
 		imageView.setUserData(candidate);
 		updateTab(candidateTab, candidate);
 		updateDiagnosticTab(infoPane, candidate);
+		addBulkClassification(candidate);
 		// pulsarPane.getTabs().add(candidateTab);
 
 		counterLabel.setText((imageCounter + 1) + "/" + candidates.size());
@@ -1366,6 +1459,7 @@ public class CandyJar extends Application implements Constants {
 		selectedCandidateSeries.getData().clear();
 
 		String beamName = candidates.get(imageCounter).getBeamName();
+		
 		Beam b = metaFile.getBeams().entrySet().stream().filter(f -> {
 			Entry<String, Beam> e = (Entry<String, Beam>) f;
 			return e.getValue().getName().endsWith(beamName);
@@ -1472,9 +1566,10 @@ public class CandyJar extends Application implements Constants {
 
 		beamMapChart.setMinHeight(0.5*leftCentreHeight);
 		
-		beamMapPane.getTabs().add(new Tab("Beam map", beamMapChart));
+		topTabPane.getTabs().add(new Tab("Beam map", beamMapChart));
+		topPaneTabs.add(TOP_PANE_TABS.BEAM_MAP.name());
 		
-		VBox centerLeft = new VBox(10, beamMapPane, infoPane, actionsBox);
+		VBox centerLeft = new VBox(10, topTabPane, infoPane, actionsBox);
 		centerLeft.setPrefSize(leftWidth, leftCentreHeight);
 		VBox.setVgrow(centerLeft, Priority.ALWAYS);
 		leftPane.setCenter(centerLeft);
@@ -1508,7 +1603,7 @@ public class CandyJar extends Application implements Constants {
 
 
 		List<String> list = new ArrayList<String>();
-		list.add("utc,png,classification");
+		list.add("beamid,utc,png,classification");
 		for (Candidate candidate : fullCandiatesList)
 			list.add(candidate.getBeamID() + Constants.CSV_SEPARATOR  + candidate.getUtcString() + Constants.CSV_SEPARATOR + candidate.getPngFilePath()
 			+ Constants.CSV_SEPARATOR + candidate.getCandidateType());
@@ -1525,37 +1620,31 @@ public class CandyJar extends Application implements Constants {
 
 		try {
 			List<String> list = Files.readAllLines(loadFile.toPath());
+			List<String> classifiedList = list.stream().filter(f -> !f.contains("UNCAT")).collect(Collectors.toList());
+			if(list.isEmpty() || list.size() == 1) {
+				message.setText("Loaded classification contains no classified candidates");
+				return;
+			}
+			int length = classifiedList.get(1).split(",").length;
+			int candidate_type_idx = length == 3? 2: 3; // old format without beam id and new with beam id
+					
+
 			for (Candidate candidate : fullCandiatesList) {
 
-				List<String> lines  = list.stream().filter(f -> f.contains(candidate.getPngFilePath())).collect(Collectors.toList());
+				List<String> lines  = classifiedList.stream().filter(f -> f.contains(candidate.getPngFilePath())).collect(Collectors.toList());
 
 				if(lines.isEmpty()) {
-					message.setText("Problem loading classification, see console for more details");
-					System.err.println("Cannot find category for " + candidate.getPngFilePath());
+					continue;
 				}
 				else if(lines.size() > 1) { 
 					message.setText("Loaded classification contains duplicates, see console for more details");
 					System.err.println( lines.size() + " values for " + candidate.getPngFilePath());
 				}
 				else {
-
-					String[] chunks = lines.get(0).split(",");
-					
-					if(chunks.length == 3) { // old format without beam id
-						candidate.setCandidateType(CANDIDATE_TYPE.valueOf(chunks[2]));
-
-					}
-					else if(chunks.length == 4) { // new format with beam id
-						candidate.setCandidateType(CANDIDATE_TYPE.valueOf(chunks[3]));
-
-					}
-					else {
-						message.setText("Loaded classification contains invalid format, see console for more details");
-						System.err.println("Invalid format in line: " + lines + "");
-					}
-
+					candidate.setCandidateType(CANDIDATE_TYPE.valueOf(lines.get(0).split(",")[candidate_type_idx]));	
 				}
 
+				classifiedList.removeAll(lines);
 
 
 			}
@@ -1623,9 +1712,20 @@ public class CandyJar extends Application implements Constants {
 				+ "allocated for PNG. Should be between 0.25 and 0.75."
 				+ " Default: " + CandyJar.maxPngOccupancy);
 		Option compareMeta = new Option( "get_close_beams", true, "Compare meta files and provide close beams in metafile2 for each beam in metafile1");
+		Option rootDir = new Option( "root_dir", true, "Root directory Default: Choose after launch");
+		Option csvFile = new Option( "csv", true, "CSV file that contains candidate information.  Default: candidates.csv");
+		Option boresight = new Option("b", "boresight", true, "Boresight of the beam in name, RA(hh:mm:ss), DEC(dd:mm:ss), radius(deg) format");
+
+		Option fTol = new Option("ftol", "freq_tolerance", true, "Period tolerance for pulsar matching. Default: " + CandyJar.freqTolerance);
+		Option scaleTol = new Option("stol", "scale_tolerance", false, "Scale tolerance with harmonics for pulsar matching. Default: " + CandyJar.scaleTolerance);
+		Option dmTol = new Option("dmtol", "dm_tolerance", true, "DM tolerance for pulsar matching. Default: " + CandyJar.dmTolerance);
+
 		//compareMeta.setArgs(2);
 		//compareMeta.setValueSeparator(',');
-
+		options.addOption(boresight);
+		options.addOption(fTol);
+		options.addOption(scaleTol);
+		options.addOption(dmTol);
 		options.addOption(selectPrimaryScreen);
 		options.addOption(selectSecondaryScreen);
 		options.addOption(help);
@@ -1637,6 +1737,9 @@ public class CandyJar extends Application implements Constants {
 		options.addOption(aspectRatio);
 		options.addOption(maxPngOccupancy);
 		options.addOption(compareMeta);
+		options.addOption(rootDir);
+		options.addOption(csvFile);
+
 
 		try{
 
@@ -1743,6 +1846,40 @@ public class CandyJar extends Application implements Constants {
 				GetCloseBeams.getCloseBeams(values[0], values[1]);
 				System.exit(0);
 			}
+
+			if(hasOption(rootDir)) {
+				String value = getValue(rootDir);
+				CandyJar.rootDir = value;
+			}
+			if (hasOption(csvFile)) {
+				String value = getValue(csvFile);
+				CandyJar.csvFile = value;
+			}
+			if (hasOption(boresight)) {
+				String value = getValue(boresight);
+				if(value.split(",").length !=4) {
+					System.err.println("Boresight should be in name, RA(hh:mm:ss), DEC(dd:mm:ss), radius(deg) format");
+					help();
+					System.exit(0);
+				}
+				CandyJar.boresightStr = value;
+			}
+
+			if(hasOption(fTol)) {
+				String value = getValue(fTol);
+				System.err.println("Setting freq tolerance to " + value);
+				CandyJar.freqTolerance = Double.parseDouble(value);
+			}
+
+			if(hasOption(scaleTol)) {
+				CandyJar.scaleTolerance = true;
+			}
+
+			if(hasOption(dmTol)) {
+				String value = getValue(dmTol);
+				CandyJar.dmTolerance = Double.parseDouble(value);
+			}
+			
 			
 		}catch(Exception e){
 			System.err.println(e.getMessage());

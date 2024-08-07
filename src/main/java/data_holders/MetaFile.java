@@ -27,6 +27,7 @@ public class MetaFile {
 	private Angle minDec;
 	private Angle maxDec;
 	private File png;
+	private Boolean stale;
 	
 	
 	public MetaFile() {
@@ -66,7 +67,7 @@ public class MetaFile {
 		double xSigma = b2.getEllipseConfig().getBeamX().getRadianValue();
 		double ySigma = b2.getEllipseConfig().getBeamY().getRadianValue();
 		double a = Math.cos(angle) * Math.cos(angle) /  (2 * xSigma * xSigma)  + Math.sin(angle) * Math.sin(angle) / (2 * ySigma * ySigma);
-		double b  = - Math.sin(2 * angle) / (4 * xSigma * xSigma) + Math.sin(2 * angle) / (4 * ySigma * ySigma);
+		double b  = - Math.sin(2 * angle) / (4 * xSigma * xSigma) + Math.sin(2 * angle) / (4 * ySigma *  ySigma);
 		double c = Math.sin(angle) * Math.sin(angle) /  (2 * xSigma * xSigma)  + Math.cos(angle) * Math.cos(angle) / (2 * ySigma * ySigma);
 		double d = a  * Math.pow(x - xMean, 2) + 2 * b  * (x - xMean) * (y - yMean) + c * Math.pow(y - yMean, 2);
 		return  Math.exp(d);
@@ -226,6 +227,14 @@ public class MetaFile {
 
 	public void setPng(File png) {
 		this.png = png;
+	}
+
+	public boolean isStale() {
+		return stale;
+	}
+
+	public void setStale(boolean stale) {
+		this.stale = stale;
 	}
 	
 	

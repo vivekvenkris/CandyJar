@@ -25,6 +25,15 @@ public class EllipseConfig {
 
 	}
 
+	public EllipseConfig(Angle beamX, Angle beamY) {
+		super();
+		this.beamX = beamX;
+		this.beamY = beamY;
+		this.beamAngle = new Angle(0.0, Angle.DEG);
+		this.beamXEq = beamX;
+		this.beamYEq = beamY;
+	}
+
 	@Override
 	public String toString() {
 		String s= "beamX " + beamX + " \n" 

@@ -9,6 +9,8 @@ import java.io.StringReader;
 import java.util.Comparator;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -30,6 +32,13 @@ public class ApsuseMetaReader {
 		
 		MetaFile metaFile = new MetaFile();
 		metaFile.setFileName(fileName);
+		metaFile.setStale(true);
+
+		if(!Files.exists(Paths.get(fileName))) {
+			System.err.println("File does not exist: " + fileName);
+			System.err.println("Using empty MetaFile");
+			return metaFile;
+		}
 
 		try {
 		
@@ -165,6 +174,7 @@ public class ApsuseMetaReader {
 			}
 			
 			
+			metaFile.setStale(false);
 
 			return metaFile;
 		}
