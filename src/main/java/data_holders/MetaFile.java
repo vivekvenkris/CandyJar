@@ -87,11 +87,14 @@ public class MetaFile {
 					
 				}
 				
+				int subListSize = beamResponses.size() > 6 ? 6 : beamResponses.size();
+				
 			    b1.addNeighbours(
 			    		beamResponses.entrySet().stream()
 			    								.sorted(Map.Entry.comparingByValue())
 			    								.collect(Collectors.toList())
-			    								.subList(0, 6).stream()
+			    								.subList(0, subListSize)
+												.stream()
 			    								.map(f -> f.getKey())
 			    								.collect(Collectors.toList())
 			    				);

@@ -561,6 +561,7 @@ public class CandyJar extends Application implements Constants {
 					Beam beam = new Beam(beamName, boresightRa, boresightDec, new Angle(Double.parseDouble(boresight[3]), Angle.DEG, Angle.DDMMSS));
 					metaFile.setBoresight(beam);
 					metaFile.getBeams().put(beamName, beam);
+					System.err.println("Boresight: " + beam + " is added to metafile");
 
 
 
@@ -1428,6 +1429,11 @@ public class CandyJar extends Application implements Constants {
 
 	public void consolidate(Integer count) {
 
+		if (candidates.size() == 0) {
+			message.setText("No candidates to display.");
+			return;
+		}
+
 
 		tier1.setSelected(false);
 		tier2.setSelected(false);
@@ -1460,11 +1466,20 @@ public class CandyJar extends Application implements Constants {
 
 		String beamName = candidates.get(imageCounter).getBeamName();
 		
-		Beam b = metaFile.getBeams().entrySet().stream().filter(f -> {
+		List<Entry<String, Beam>> entries = metaFile.getBeams().entrySet().stream().filter(f -> {
 			Entry<String, Beam> e = (Entry<String, Beam>) f;
 			return e.getValue().getName().endsWith(beamName);
-		}).collect(Collectors.toList()).get(0).getValue();
+		}).collect(Collectors.toList());
 
+		if (entries.size() == 0) {
+			message.setText("Cannot find candidates for beamname: " + beamName);
+			System.err.println("Cannot find candidates for beamname: " + beamName);
+			return;
+		}
+
+		Beam b = entries.get(0).getValue();
+
+	
 		selectedCandidateSeries.setName(Constants.CANDIDATE_BEAM_MAP);
 		Data<Number, Number> d = new Data<Number, Number>(b.getRa().getDecimalHourValue(), b.getDec().getDegreeValue());
 		d.setExtraValue(b);
@@ -1571,7 +1586,7 @@ public class CandyJar extends Application implements Constants {
 		
 		VBox centerLeft = new VBox(10, topTabPane, infoPane, actionsBox);
 		centerLeft.setPrefSize(leftWidth, leftCentreHeight);
-		VBox.setVgrow(centerLeft, Priority.ALWAYS);
+		VBox.setVgrow(centerLeft, Priority.ALWAYS); ma
 		leftPane.setCenter(centerLeft);
 		
 
@@ -1638,7 +1653,15 @@ public class CandyJar extends Application implements Constants {
 				}
 				else if(lines.size() > 1) { 
 					message.setText("Loaded classification contains duplicates, see console for more details");
-					System.err.println( lines.size() + " values for " + candidate.getPngFilePath());
+
+					if(lines.stream().map(f-> f.split(",")[candidate_type_idx]).collect(Collectors.toSet()).size() == 1){
+						candidate.setCandidateType(CANDIDATE_TYPE.valueOf(lines.get(0).split(",")[candidate_type_idx]));
+					}
+					else {
+						System.err.println("Different classifications for " + candidate.getPngFilePath());
+						System.err.println( "Duplicates:" + lines.size() + " values for " + candidate.getPngFilePath());
+					}
+					
 				}
 				else {
 					candidate.setCandidateType(CANDIDATE_TYPE.valueOf(lines.get(0).split(",")[candidate_type_idx]));	
@@ -1675,7 +1698,7 @@ public class CandyJar extends Application implements Constants {
 
 		LOGGER.atDebug().addArgument("test");
 
-		System.err.println("*************************Candy Jar V3.0*******************************");
+		System.err.println("*************************Candy Jar V3.1*******************************");
 
 		if(System.getenv("PSRCAT_DIR") != null) {
 			PsrcatConstants.psrcatDBs.add(System.getenv("PSRCAT_DIR") + File.separator + "psrcat.db");
