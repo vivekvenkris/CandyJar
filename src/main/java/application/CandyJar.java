@@ -1586,7 +1586,7 @@ public class CandyJar extends Application implements Constants {
 		
 		VBox centerLeft = new VBox(10, topTabPane, infoPane, actionsBox);
 		centerLeft.setPrefSize(leftWidth, leftCentreHeight);
-		VBox.setVgrow(centerLeft, Priority.ALWAYS); ma
+		VBox.setVgrow(centerLeft, Priority.ALWAYS); 
 		leftPane.setCenter(centerLeft);
 		
 
