@@ -289,6 +289,7 @@ public class CandyJar extends Application implements Constants {
 	private static Double dmTolerance = 5.0;
 	private static Double freqTolerance = 1e-4;
 	private static boolean scaleTolerance = false;
+	private static boolean includeFractions = false;
 
 
 	public void initialise() {
@@ -433,7 +434,7 @@ public class CandyJar extends Application implements Constants {
 						String utcString = Utilities.getUTCString(utc, DateTimeFormatter.ISO_DATE_TIME);
 						List<Candidate> candidatesPerUtc = fullCandiatesList.stream().filter(f -> f.getStartUTC().equals(utc)).collect(Collectors.toList());
 						candidateMap.put(utcString, candidatesPerUtc);
-						Helpers.findCandidateSimilarities(candidatesPerUtc, freqTolerance, scaleTolerance, dmTolerance);
+						Helpers.findCandidateSimilarities(candidatesPerUtc, freqTolerance, scaleTolerance, dmTolerance, includeFractions);
 
 					}
 					sortBox.getItems().clear();
@@ -1394,10 +1395,22 @@ public class CandyJar extends Application implements Constants {
 			if( Math.abs(count - index) <= numImageGulp) {
 				if (f.getImage() == null) {
 					File pngFile = new File(baseDir.getAbsolutePath() + File.separator + f.getPngFilePath());
+					if(!pngFile.exists()) pngFile = new File(getClass().getResource("/no_image.png").toExternalForm());
+					BufferedImage image = null;
 					try {
-						BufferedImage image = ImageIO.read(pngFile);
+						image = ImageIO.read(pngFile);
+						
+					} catch (IOException e) {
+						message.setText("Image not found or corrupted.");
+						e.printStackTrace();
 
-						if( (image.getWidth() == pngPaneWidth && image.getHeight() == pngPaneHeight) ||   
+					}
+					if(image == null) {
+						f.setImage(null); 
+						return;
+					}
+
+					if( (image.getWidth() == pngPaneWidth && image.getHeight() == pngPaneHeight) ||   
 								(image.getWidth() < pngPaneWidth && image.getHeight() < pngPaneHeight && !CandyJar.extendPng) ) {
 
 							f.setImage(new Image(pngFile.toURI().toString()));
@@ -1411,11 +1424,6 @@ public class CandyJar extends Application implements Constants {
 							f.setImage(SwingFXUtils.toFXImage(scaledImage, null));
 						}
 
-					} catch (IOException e) {
-						message.setText(e.getMessage());
-						e.printStackTrace();
-
-					}
 
 				}
 			}
@@ -1741,6 +1749,7 @@ public class CandyJar extends Application implements Constants {
 
 		Option fTol = new Option("ftol", "freq_tolerance", true, "Period tolerance for pulsar matching. Default: " + CandyJar.freqTolerance);
 		Option scaleTol = new Option("stol", "scale_tolerance", false, "Scale tolerance with harmonics for pulsar matching. Default: " + CandyJar.scaleTolerance);
+		Option incFractions = new Option("fh", "include_fractional_harmonics", false, "Include fractions in the period for pulsar matching. Default: " + CandyJar.includeFractions);
 		Option dmTol = new Option("dmtol", "dm_tolerance", true, "DM tolerance for pulsar matching. Default: " + CandyJar.dmTolerance);
 
 		//compareMeta.setArgs(2);
@@ -1749,6 +1758,7 @@ public class CandyJar extends Application implements Constants {
 		options.addOption(fTol);
 		options.addOption(scaleTol);
 		options.addOption(dmTol);
+		options.addOption(incFractions);
 		options.addOption(selectPrimaryScreen);
 		options.addOption(selectSecondaryScreen);
 		options.addOption(help);
@@ -1901,6 +1911,10 @@ public class CandyJar extends Application implements Constants {
 			if(hasOption(dmTol)) {
 				String value = getValue(dmTol);
 				CandyJar.dmTolerance = Double.parseDouble(value);
+			}
+
+			if(hasOption(incFractions)) {
+				CandyJar.includeFractions = true;
 			}
 			
 			

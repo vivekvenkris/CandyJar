@@ -35,6 +35,8 @@ import javafx.stage.Screen;
 import javafx.util.Callback;
 import javafx.util.Duration;
 import javafx.util.Pair;
+import java.util.Comparator;
+
 import net.kurobako.gesturefx.GesturePane;
 
 public class Helpers {
@@ -51,7 +53,7 @@ public class Helpers {
     );
 }
 	// Unique harmonic ratios for i-> 0 to 16; j-> 0 to 16; and harmonic = i/j
-	private static double[] harmonicRatios = new double[] {0.0625,  0.0667,  0.0714,  0.0769,  0.0833,  0.0909,  0.1 ,
+	private static double[] fractionalHarmonicRatios = new double[] {0.0625,  0.0667,  0.0714,  0.0769,  0.0833,  0.0909,  0.1 ,
         0.1111,  0.125 ,  0.1333,  0.1429,  0.1538,  0.1667,  0.1818,
         0.1875,  0.2   ,  0.2143,  0.2222,  0.2308,  0.25  ,  0.2667,
         0.2727,  0.2857,  0.3   ,  0.3077,  0.3125,  0.3333,  0.3571,
@@ -75,6 +77,13 @@ public class Helpers {
         6.5   ,  7.    ,  7.5   ,  8.    ,  9.    , 10.    , 11.    ,
        12.    , 13.    , 14.    , 15.    , 16. };
 
+	
+	private static double[] wholeHarmonicRatios = new double[]{ 1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11., 12., 13.,
+		14., 15., 16., 1.  , 0.5  , 0.33333333, 0.25   , 0.2  ,
+		0.16666667, 0.14285714, 0.125     , 0.11111111, 0.1       ,
+		0.09090909, 0.08333333, 0.07692308, 0.07142857, 0.06666667,
+		0.0625 
+	};
 
 
 	
@@ -89,7 +98,7 @@ public class Helpers {
 				double f0 = c1.getOptF0();
 				double minF0 = f0 - 1e-4;
 				double maxF0 = f0 + 1e-4;
-				for(double harmonic: harmonicRatios) {
+				for(double harmonic: fractionalHarmonicRatios) {
 					if(c2.getOptF0() >= harmonic * minF0 && c2.getOptF0() <= harmonic * maxF0 ) {
 						return c2;
 					}
@@ -106,12 +115,14 @@ public class Helpers {
 
 	}
 
-	public static boolean areTheyRelated(Candidate c1, Candidate c2, double fTol, boolean scaleTol, double dmTol){
+	public static boolean areTheyRelated(Candidate c1, Candidate c2, double fTol, boolean scaleTol, double dmTol, boolean includeFractions){
 			double f0 = c1.getOptF0();
 
 			boolean closeInPeriod = false;
 
 			double matchingHarmonic = 0;
+
+			double[] harmonicRatios = includeFractions ? fractionalHarmonicRatios : wholeHarmonicRatios;
 
 			for(double harmonic: harmonicRatios) {
 				double tol = scaleTol ? fTol * harmonic : fTol;
@@ -123,6 +134,7 @@ public class Helpers {
 
 			}
 			if(!closeInPeriod) return false;
+			
 
 			// TODO: Identify how to compare DMs for candidates matching in harmonics. 
 
@@ -133,12 +145,13 @@ public class Helpers {
 
 	
 
-	public static void findCandidateSimilarities(List<Candidate> candidates, double fTol, boolean scaleTol, double dmTol){
+	public static void findCandidateSimilarities(List<Candidate> candidates, double fTol, boolean scaleTol, double dmTol, boolean includeFractions) {
 		 Map<Candidate, List<Candidate>> candidateRelationMap = new HashMap<Candidate, List<Candidate>>();
 
 		 for(Candidate current: candidates){
 		
-			List<Candidate> relatedToCurrent = candidateRelationMap.keySet().stream().filter(c -> areTheyRelated(c, current, fTol, scaleTol, dmTol)).collect(Collectors.toList());
+			List<Candidate> relatedToCurrent = candidateRelationMap.keySet().stream().filter(c -> areTheyRelated(c, current, fTol, scaleTol, dmTol, includeFractions))
+												.collect(Collectors.toList());
 
 			if(relatedToCurrent.isEmpty()) {
 				candidateRelationMap.put(current, new ArrayList<Candidate>());
@@ -205,7 +218,7 @@ public class Helpers {
 				double f0 = c1.getOptF0();
 				double minF0 = f0 - 1e-4;
 				double maxF0 = f0 + 1e-4;
-				for(double harmonic: harmonicRatios) {
+				for(double harmonic: fractionalHarmonicRatios) {
 					if(c2.getOptF0() >= harmonic * minF0 && c2.getOptF0() <= harmonic * maxF0 ) {
 						return c2;
 					}
