@@ -71,6 +71,8 @@ public class Candidate {
 	private Image image; 
 	
 	private List<Candidate> similarCandidatesInFreq; 
+
+	public static String csvHeader;
 	
 	Beam beam;
 	
@@ -140,26 +142,26 @@ public class Candidate {
 
 	
 
-	public boolean isSimilarTo(Candidate c2) {
+	// public boolean isSimilarTo(Candidate c2) {
 		
 
-		double minF0 = this.getOptF0() - 1e-4;
-		double maxF0 = this.getOptF0() + 1e-4;
+	// 	double minF0 = this.getOptF0() - 1e-4;
+	// 	double maxF0 = this.getOptF0() + 1e-4;
 		
 
 
-		for(int i=1; i<=16; i++) {
-			for(int j=1;j<=16;j++) {
-				double harmonic = ((double)i)/j;
-				if(c2.getOptF0() >= harmonic * minF0 && c2.getOptF0() <= harmonic * maxF0 ) {
-					return true;
-				}
+	// 	for(int i=1; i<=16; i++) {
+	// 		for(int j=1;j<=16;j++) {
+	// 			double harmonic = ((double)i)/j;
+	// 			if(c2.getOptF0() >= harmonic * minF0 && c2.getOptF0() <= harmonic * maxF0 ) {
+	// 				return true;
+	// 			}
 				
-			}
-		}
-		return false;
+	// 		}
+	// 	}
+	// 	return false;
 		
-	}
+	// }
 	
 	
 	public Candidate(){
@@ -186,7 +188,14 @@ public class Candidate {
 	}
 	
 	public String getBeamP0DMString() {
-		return String.format("%s %s %8.4f %4.2f",this.lineNum, this.beamName.replace("cfbf00", ""), this.getOptP0()* 1000.0, this.optDM);
+		String name = "";
+		if(this.filterbankPath.contains("dbs")){
+			name = this.filterbankPath.split("dbs")[1].replace("_", " ").trim().replace(" ", "_");
+		}
+		else{
+			this.beamName.replace("cfbf00", "");
+		}
+		return String.format("%s %s %8.4f %4.2f %.1f",this.lineNum, name, this.getOptP0()* 1000.0, this.optDM, this.foldSNR);
 	}
 	@Override
 	public String toString() {

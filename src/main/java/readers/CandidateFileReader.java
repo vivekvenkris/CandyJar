@@ -44,6 +44,8 @@ public class CandidateFileReader implements CandidateFileConstants {
 				throw new InvalidInputException("CSV is either the wrong format, or has no/multiple non-identical headers.");
 			}
 
+			Candidate.csvHeader = headers.toArray()[0].toString();
+
 			List<String> headerChunks = Arrays.asList(headers.toArray()[0].toString().split(","));
 			Map<String, Integer> headerPositions = new HashMap<String, Integer>();
 			for(String x : csvParams) {

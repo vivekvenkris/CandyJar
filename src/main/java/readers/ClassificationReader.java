@@ -49,6 +49,8 @@ public class ClassificationReader extends Task<String> {
 				}
 				else if(lines.size() > 1) { 
 					System.err.println( lines.size() + " values for " + candidate.getPngFilePath());
+					System.err.println("Using the last value: " + lines.get(lines.size()-1));
+					candidate.setCandidateType(CANDIDATE_TYPE.valueOf(lines.get(lines.size()-1).split(",")[candidate_type_idx]));
 				}
 				else {
 					candidate.setCandidateType(CANDIDATE_TYPE.valueOf(lines.get(0).split(",")[candidate_type_idx]));	

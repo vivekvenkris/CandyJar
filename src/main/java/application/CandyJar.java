@@ -1395,13 +1395,14 @@ public class CandyJar extends Application implements Constants {
 			if( Math.abs(count - index) <= numImageGulp) {
 				if (f.getImage() == null) {
 					File pngFile = new File(baseDir.getAbsolutePath() + File.separator + f.getPngFilePath());
-					if(!pngFile.exists()) pngFile = new File(getClass().getResource("/no_image.png").toExternalForm());
+					//if(!pngFile.exists()) pngFile = new File(getClass().getResource("/no_image.png").toExternalForm());
 					BufferedImage image = null;
 					try {
 						image = ImageIO.read(pngFile);
 						
 					} catch (IOException e) {
 						message.setText("Image not found or corrupted.");
+						System.err.println("Image not found or corrupted: " + pngFile.getAbsolutePath());
 						e.printStackTrace();
 
 					}
@@ -1473,6 +1474,35 @@ public class CandyJar extends Application implements Constants {
 		selectedCandidateSeries.getData().clear();
 
 		String beamName = candidates.get(imageCounter).getBeamName();
+
+		switch (candidate.getCandidateType()) {
+			case T1_CAND:
+				tier1.setSelected(true);
+				break;
+			case T2_CAND:
+				tier2.setSelected(true);
+				break;
+			case RFI:
+				rfi.setSelected(true);
+				break;
+			case KNOWN_PSR:
+				knownPulsar.setSelected(true);
+				break;
+			case NB_PSR:
+				nbPulsar.setSelected(true);
+				break;			
+			case NOISE:
+				noise.setSelected(true);
+				break;
+			case UNCAT:
+				reset.setSelected(true);
+				break;
+	
+			}
+	
+		infoPane.requestLayout();
+	
+		if(chartViewer!=null) chartViewer.addToMap(CANDIDATE_PLOT_CATEGORY.CURRENTLY_VIEWING, Arrays.asList(candidate));
 		
 		List<Entry<String, Beam>> entries = metaFile.getBeams().entrySet().stream().filter(f -> {
 			Entry<String, Beam> e = (Entry<String, Beam>) f;
@@ -1480,8 +1510,8 @@ public class CandyJar extends Application implements Constants {
 		}).collect(Collectors.toList());
 
 		if (entries.size() == 0) {
-			message.setText("Cannot find candidates for beamname: " + beamName);
-			System.err.println("Cannot find candidates for beamname: " + beamName);
+			// message.setText("Cannot find candidates for beamname: " + beamName);
+			// System.err.println("Cannot find candidates for beamname: " + beamName);
 			return;
 		}
 
@@ -1495,34 +1525,7 @@ public class CandyJar extends Application implements Constants {
 
 		beamMapChart.getData().add(selectedCandidateSeries);
 
-		switch (candidate.getCandidateType()) {
-		case T1_CAND:
-			tier1.setSelected(true);
-			break;
-		case T2_CAND:
-			tier2.setSelected(true);
-			break;
-		case RFI:
-			rfi.setSelected(true);
-			break;
-		case KNOWN_PSR:
-			knownPulsar.setSelected(true);
-			break;
-		case NB_PSR:
-			nbPulsar.setSelected(true);
-			break;			
-		case NOISE:
-			noise.setSelected(true);
-			break;
-		case UNCAT:
-			reset.setSelected(true);
-			break;
 
-		}
-
-		infoPane.requestLayout();
-
-		if(chartViewer!=null) chartViewer.addToMap(CANDIDATE_PLOT_CATEGORY.CURRENTLY_VIEWING, Arrays.asList(candidate));
 	}
 
 
@@ -1625,14 +1628,21 @@ public class CandyJar extends Application implements Constants {
 		}
 
 
-		List<String> list = new ArrayList<String>();
-		list.add("beamid,utc,png,classification");
-		for (Candidate candidate : fullCandiatesList)
-			list.add(candidate.getBeamID() + Constants.CSV_SEPARATOR  + candidate.getUtcString() + Constants.CSV_SEPARATOR + candidate.getPngFilePath()
+		List<String> candList = new ArrayList<String>();
+		List<String> fullCandList = new ArrayList<String>();
+		if(!Candidate.csvHeader.isEmpty()){
+			fullCandList.add(Candidate.csvHeader + Constants.CSV_SEPARATOR + "classification");
+		}
+		candList.add("beamid,utc,png,classification");
+		for (Candidate candidate : fullCandiatesList) {
+		candList.add(candidate.getBeamID() + Constants.CSV_SEPARATOR  + candidate.getUtcString() + Constants.CSV_SEPARATOR + candidate.getPngFilePath()
 			+ Constants.CSV_SEPARATOR + candidate.getCandidateType());
+		fullCandList.add(candidate.getCsvLine()+ Constants.CSV_SEPARATOR + candidate.getCandidateType());
+		}
 
 		try {
-			FileUtils.writeLines(saveFile, list);
+			FileUtils.writeLines(saveFile, candList);
+			FileUtils.writeLines(new File(saveFile.getAbsolutePath().replace(".csv", "_full.csv")), fullCandList);
 		} catch (IOException e) {
 			message.setText(e.getMessage());
 			e.printStackTrace();
