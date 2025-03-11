@@ -125,13 +125,17 @@ public class Psrcat implements PsrcatConstants {
 					if(line.contains("#") || line.contains("@") || line.equals("")) continue;
 					
 					try {
-					
-						String name = line.substring(0, endOfName).trim();
-						String value = line.substring(endOfName + 1, endofValue > line.length()? line.length() : endofValue ).trim();
-						
+						String[] chunks = line.trim().split("\\s+");
+						String name = chunks[0];
+						String value = chunks[1];
+
+
 						if(name.equals(PSRJ)) {
 							if(pulsar != null && pulsar.getRa() !=null && pulsar.getDec() !=null && !problematic) pulsarMap.put(value, pulsar);
-							//else System.err.println("Skipping pulsar: " + pulsar.getName());
+							else if(pulsar != null) {
+								System.err.println("Skipping pulsar: " + pulsar.getName() + " because of missing data: RA/DEC = " 
+								+ pulsar.getRa() + "/" + pulsar.getDec() + "or otherwise problematic:" + problematic);
+							}
 							
 							pulsar = new Pulsar();
 							pulsar.setName(value);
@@ -145,6 +149,8 @@ public class Psrcat implements PsrcatConstants {
 						else if(name.equals(DM)) pulsar.setDm(Double.parseDouble(value));
 						else if (name.equals(BINARY)) pulsar.setBinary(true);
 						pulsar.addToEphemerides(line);
+
+						//System.err.println(pulsar.getRa() + " " + pulsar.getDec() + " " + pulsar.getP0() + " " + pulsar.getDm() + " " + pulsar.getBinary());
 					
 					}catch (NumberFormatException e) {
 						
@@ -156,6 +162,13 @@ public class Psrcat implements PsrcatConstants {
 
 					
 					
+				}
+
+				if(pulsar != null && pulsar.getRa() !=null && pulsar.getDec() !=null && !problematic) pulsarMap.put(pulsar.getName(), pulsar);
+				else if(pulsar != null) {
+					System.err.println("Skipping pulsar: " + pulsar.getName() + " because of missing data: " 
+					+ pulsar.getRa() + " " + pulsar.getDec() + "or problematic:" + problematic);
+					System.err.println(pulsar.getEphemerides());
 				}
 				
 			}
